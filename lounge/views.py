@@ -1,3 +1,13 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import Lounge, LoungeAccess
+from .serializers import LoungeSerializer, LoungeAccessSerializer
 
-# Create your views here.
+
+class LoungeViewSet(viewsets.ModelViewSet):
+    queryset = Lounge.objects.all()
+    serializer_class = LoungeSerializer
+
+
+class LoungeAccessViewSet(viewsets.ModelViewSet):
+    queryset = LoungeAccess.objects.all()
+    serializer_class = LoungeAccessSerializer

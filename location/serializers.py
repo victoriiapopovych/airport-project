@@ -1,14 +1,14 @@
 from rest_framework import serializers
 from .models import Country, City, Airport
 
-class CoutrySerializer(serializers.ModelSerializer):
+class CountrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Country
         fields = ["id", "name", "code"]
 
 class CitySerializer(serializers.ModelSerializer):
-    country_name = serializers.CharField(sourse = "country.name", read_only = True)
+    country_name = serializers.CharField(source = "country.name", read_only = True)
 
     class Meta :
         model = City
@@ -16,8 +16,8 @@ class CitySerializer(serializers.ModelSerializer):
 
 
 class AirportSerializer(serializers.ModelSerializer):
-    city_name = serializers.CharField(sourse = "city.name", read_only = True)
-    country_name = serializers.CharField(sourse = "city.country.name", read_only = True)
+    city_name = serializers.CharField(source = "city.name", read_only = True)
+    country_name = serializers.CharField(source = "city.country.name", read_only = True)
 
     class Meta:
         model = Airport
