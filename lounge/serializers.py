@@ -34,7 +34,6 @@ class LoungeAccessDetailSerializer(serializers.ModelSerializer):
         return None
     
     
-
 class LoungeAccessListSerializer(serializers.ModelSerializer):
     user_name = serializers.StringRelatedField(source="user", read_only=True)
     lounge_name = serializers.CharField(source="lounge.name", read_only=True)

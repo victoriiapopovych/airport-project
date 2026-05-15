@@ -7,12 +7,21 @@ from rest_framework import viewsets
 from .models import TicketClass, Booking, Ticket
 from .serializers import TicketClassSerializer, BookingListSerializer, BookingDetailSerializer, TicketListSerializer, TicketDetailSerializer
 
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, SAFE_METHODS
 from rest_framework.exceptions import PermissionDenied
+
+
+class IsAdminOrReadOnly(IsAdminUser):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return super().has_permission(request, view)
 
 
 class TicketClassListCreateAPIView(APIView):
     serializer_class = TicketClassSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
     def get(self, request):
         ticket_classes = TicketClass.objects.all()
@@ -31,6 +40,7 @@ class TicketClassListCreateAPIView(APIView):
 
 class TicketClassDetailAPIView(APIView):
     serializer_class = TicketClassSerializer
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_object(self, pk):
         return get_object_or_404(TicketClass, pk=pk)
@@ -67,6 +77,7 @@ class TicketClassDetailAPIView(APIView):
 
 
 class BookingViewSet(viewsets.ModelViewSet):
+    queryset = Booking.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -86,10 +97,11 @@ class BookingViewSet(viewsets.ModelViewSet):
 
 
 class TicketViewSet(viewsets.ModelViewSet):
+    queryset = Ticket.objects.all()
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-     return Ticket.objects.filter(booking__user=self.request.user)
+        return Ticket.objects.filter(booking__user=self.request.user)
     
     def get_serializer_class(self):
         if self.action == "list":
