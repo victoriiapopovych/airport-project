@@ -1,13 +1,30 @@
 from rest_framework import serializers
 from .models import User
 
-class UserSerializer(serializers.ModelSerializer):
-    citizenship_name = serializers.CharField(source = "citizenship.name", read_only = True)
+
+class UserListSerializer(serializers.ModelSerializer):
+    citizenship_name = serializers.CharField(source="citizenship.name", read_only=True)
 
     class Meta:
         model = User
         fields = [
-            "id", 
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "role",
+            "citizenship_name",
+            "is_verified",
+        ]
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    citizenship_name = serializers.CharField(source="citizenship.name", read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
 
             # AbstractUser fields
             "username",
@@ -22,7 +39,5 @@ class UserSerializer(serializers.ModelSerializer):
             "citizenship_name",
             "date_of_birth",
             "phone_number",
-            "is_verified"
+            "is_verified",
         ]
-
-
