@@ -7,6 +7,9 @@ from rest_framework import viewsets
 from .models import TicketClass, Booking, Ticket
 from .serializers import TicketClassSerializer, BookingListSerializer, BookingDetailSerializer, TicketListSerializer, TicketDetailSerializer
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
+
 
 class TicketClassListCreateAPIView(APIView):
     serializer_class = TicketClassSerializer
@@ -64,7 +67,11 @@ class TicketClassDetailAPIView(APIView):
 
 
 class BookingViewSet(viewsets.ModelViewSet):
-    queryset = Booking.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Booking.objects.filter(user=self.request.user)
+
     def get_serializer_class(self):
         if self.action == "list":
             return BookingListSerializer
@@ -73,10 +80,16 @@ class BookingViewSet(viewsets.ModelViewSet):
             return BookingDetailSerializer
 
         return BookingDetailSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+     return Ticket.objects.filter(booking__user=self.request.user)
     
     def get_serializer_class(self):
         if self.action == "list":
@@ -86,3 +99,12 @@ class TicketViewSet(viewsets.ModelViewSet):
             return TicketDetailSerializer
         
         return TicketDetailSerializer
+    
+    def perform_create(self, serializer):
+        booking = serializer.validated_data["booking"]
+
+        if booking.user != self.request.user:
+            raise PermissionDenied("You cannot create ticket for another user's booking.")
+
+        serializer.save()
+ 

@@ -15,6 +15,8 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = ["id", "user", "user_name", "created_at", "status", "total_price"]
+        read_only_fields = ["user", "created_at", "status", "total_price"]
+
 
 
 class BookingListSerializer(serializers.ModelSerializer):
@@ -32,6 +34,7 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ["id", "booking", "flight", "flight_number", "ticket_class", "ticket_class_name", "passenger_first_name", "passenger_last_name", "seat_number", "price", "status"]
+        read_only_fields = ["price", "status"]
 
 class TicketListSerializer(serializers.ModelSerializer):
     flight_number = serializers.CharField(source="flight.flight_number", read_only=True)

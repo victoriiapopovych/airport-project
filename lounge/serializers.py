@@ -26,11 +26,13 @@ class LoungeAccessDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoungeAccess
         fields = ["id", "user", "user_name", "lounge", "lounge_name", "ticket", "ticket_flight_number", "access_type", "valid_from", "valid_until", "is_used"]
+        read_only_fields = ["user", "access_type", "valid_from", "valid_until", "is_used"]
 
     def get_ticket_flight_number(self, obj):
         if obj.ticket:
             return obj.ticket.flight.flight_number
         return None
+    
     
 
 class LoungeAccessListSerializer(serializers.ModelSerializer):

@@ -2,6 +2,8 @@ from rest_framework import viewsets
 from .models import Lounge, LoungeAccess
 from .serializers import LoungeDetailSerializer, LoungeListSerializer, LoungeAccessDetailSerializer, LoungeAccessListSerializer
 
+from rest_framework.permissions import IsAuthenticated
+
 
 class LoungeViewSet(viewsets.ModelViewSet):
     queryset = Lounge.objects.all()
@@ -17,7 +19,10 @@ class LoungeViewSet(viewsets.ModelViewSet):
 
 
 class LoungeAccessViewSet(viewsets.ModelViewSet):
-    queryset = LoungeAccess.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return LoungeAccess.objects.filter(user=self.request.user)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -27,3 +32,7 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
             return LoungeAccessDetailSerializer
         
         return LoungeAccessDetailSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+ 

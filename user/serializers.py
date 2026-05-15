@@ -41,3 +41,5 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "phone_number",
             "is_verified",
         ]
+        read_only_fields = ["role", "is_verified"]
+ 
