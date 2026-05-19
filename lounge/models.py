@@ -24,6 +24,12 @@ class LoungeAccess(models.Model):
         BANK_CARD = "bank_card", "Bank Card"
         PAID_ACCESS = "paid_access", "Paid Access"
 
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        CANCELLED = "cancelled", "Cancelled"
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="lounge_accesses")
     lounge = models.ForeignKey(Lounge, on_delete=models.CASCADE, related_name="accesses")
     ticket = models.ForeignKey(Ticket, on_delete=models.SET_NULL, null=True, blank=True, related_name="lounge_accesses")
@@ -31,6 +37,7 @@ class LoungeAccess(models.Model):
     valid_from = models.DateTimeField()
     valid_until = models.DateTimeField()
     is_used = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 
     def __str__(self):
         return f"{self.user} - {self.lounge} ({self.get_access_type_display()})"

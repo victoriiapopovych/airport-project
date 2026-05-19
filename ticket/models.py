@@ -13,6 +13,7 @@ class TicketClass(models.Model):
     baggage_kg = models.PositiveIntegerField()
     priority_boarding = models.BooleanField(default=False)
     lounge_access = models.BooleanField(default=False)
+    extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return self.get_class_type_display()
@@ -44,7 +45,6 @@ class Ticket(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="tickets")
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="tickets")
     ticket_class = models.ForeignKey(TicketClass, on_delete=models.PROTECT, related_name="tickets")
-
     passenger_first_name = models.CharField(max_length=100)
     passenger_last_name = models.CharField(max_length=100)
     seat_number = models.CharField(max_length=10, blank=True)

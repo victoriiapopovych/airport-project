@@ -25,8 +25,8 @@ class LoungeAccessDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LoungeAccess
-        fields = ["id", "user", "user_name", "lounge", "lounge_name", "ticket", "ticket_flight_number", "access_type", "valid_from", "valid_until", "is_used"]
-        read_only_fields = ["user", "access_type", "valid_from", "valid_until", "is_used"]
+        fields = ["id", "user", "user_name", "lounge", "lounge_name", "ticket", "ticket_flight_number", "access_type", "valid_from", "valid_until", "is_used", "status"]
+        read_only_fields = ["user", "status", "is_used"]
 
     def get_ticket_flight_number(self, obj):
         if obj.ticket:
@@ -41,10 +41,26 @@ class LoungeAccessListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LoungeAccess
-        fields = ["id", "user_name", "lounge_name", "ticket_flight_number", "access_type", "is_used"]
+        fields = ["id", "user_name", "lounge_name", "ticket_flight_number", "access_type", "is_used", "status"]
 
     def get_ticket_flight_number(self, obj):
         if obj.ticket:
             return obj.ticket.flight.flight_number
         return None
 
+class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoungeAccess
+        fields = ["status", "access_type", "valid_from", "valid_until", "is_used"]
+
+class LoungeAccessAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoungeAccess
+        fields = ["id", "user", "lounge", "ticket", "access_type", "valid_from", "valid_until", "is_used", "status"]
+        read_only_fields = ["id"]
+
+class LoungeAccessCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoungeAccess
+        fields = ["id", "lounge", "ticket", "access_type", "valid_from", "valid_until"]
+        read_only_fields = ["id"]

@@ -2,15 +2,8 @@ from rest_framework import viewsets, generics
 from .models import Country, City, Airport
 from .serializers import CountrySerializer, CitySerializer, AirportDetailSerializer, AirportListSerializer
 
-from rest_framework.permissions import IsAdminUser, SAFE_METHODS
-
-
-class IsAdminOrReadOnly(IsAdminUser):
-    def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
-            return True
-
-        return super().has_permission(request, view)
+from config.permissions import IsAdminOrReadOnly
+from user.permissions import IsManagerOrAdminOrReadOnly
 
 
 class CountryListCreateAPIView(generics.ListCreateAPIView):
@@ -33,7 +26,7 @@ class CityViewSet(viewsets.ModelViewSet):
 
 class AirportViewSet(viewsets.ModelViewSet):
     queryset = Airport.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsManagerOrAdminOrReadOnly]
     
     def get_serializer_class(self):
         if self.action == "list":

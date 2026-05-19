@@ -8,6 +8,7 @@ class User(AbstractUser):
         PASSENGER = "passenger", "Passenger"
         SUPPORT = "support", "Support"
         MANAGER = "manager", "Manager"
+        LOUNGE_OPERATOR = "lounge_operator", "Lounge Operator"
         
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.PASSENGER)
@@ -24,3 +25,4 @@ class User(AbstractUser):
             return f"{full_name} ({self.role})"
 
         return f"{self.username} ({self.role})"
+ 

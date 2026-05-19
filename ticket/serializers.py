@@ -6,7 +6,7 @@ class TicketClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TicketClass
-        fields = ["id", "class_type", "baggage_kg", "priority_boarding", "lounge_access"]
+        fields = ["id", "class_type", "baggage_kg", "priority_boarding", "lounge_access", "extra_price"]
 
 
 class BookingDetailSerializer(serializers.ModelSerializer):
@@ -43,3 +43,17 @@ class TicketListSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = ["id", "flight_number", "passenger_first_name", "passenger_last_name", "seat_number", "price", "status"]
 
+class BookingStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = ["status"]
+
+class TicketStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ["status"]
+
+class BookingManagerAdminUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = ["status"]
