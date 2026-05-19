@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "flight",
     "ticket",
     "lounge",
+
+    "django_filters",
 ]
 
 MIDDLEWARE = [

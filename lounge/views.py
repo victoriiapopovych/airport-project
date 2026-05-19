@@ -10,9 +10,21 @@ from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.response import Response
 
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
+
+from config.pagination import CustomPagination
+
+
 class LoungeViewSet(viewsets.ModelViewSet):
     queryset = Lounge.objects.all()
     permission_classes = [IsLoungeOperatorOrAdminOrReadOnly]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["airport", "is_active"]
+    search_fields = ["name", "airport__name", "airport__code"]
+
+    pagination_class = CustomPagination
     
     def get_serializer_class(self):
         if self.action == "list":
