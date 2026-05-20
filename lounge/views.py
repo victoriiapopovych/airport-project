@@ -40,6 +40,12 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
     queryset = LoungeAccess.objects.all()
     permission_classes = [IsAuthenticated]
 
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["lounge", "status", "access_type", "is_used"]
+    search_fields = ["user__username", "user__email", "lounge__name"]
+
+    pagination_class = CustomPagination
+
     def get_queryset(self):
         user = self.request.user
 

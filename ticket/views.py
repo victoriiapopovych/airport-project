@@ -14,6 +14,10 @@ from drf_spectacular.utils import extend_schema
 from user.permissions import IsManagerOrAdminOrReadOnly
 from django.db import models
 
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
+from config.pagination import CustomPagination
+
 
 class TicketClassListCreateAPIView(APIView):
     serializer_class = TicketClassSerializer
@@ -75,6 +79,12 @@ class TicketClassDetailAPIView(APIView):
 class BookingViewSet(viewsets.ModelViewSet):
     queryset = Booking.objects.all()
     permission_classes = [IsAuthenticated]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["status", "user"]
+    search_fields = ["user__username", "user__email"]
+
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         if (self.request.user.is_staff or self.request.user.is_superuser
@@ -187,6 +197,12 @@ class BookingViewSet(viewsets.ModelViewSet):
 class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     permission_classes = [IsAuthenticated]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["status", "booking", "flight", "ticket_class"]
+    search_fields = ["passenger_first_name", "passenger_last_name", "seat_number", "flight__flight_number"]
+
+    pagination_class = CustomPagination
 
     def get_queryset(self):
         if (

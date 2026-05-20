@@ -9,6 +9,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
+from config.pagination import CustomPagination
+
 
 class RegisterAPIView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -19,6 +23,12 @@ class RegisterAPIView(generics.CreateAPIView):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["role", "is_verified", "citizenship"]
+    search_fields = ["username", "email", "first_name", "last_name", "passport_number"]
+
+    pagination_class = CustomPagination
+
     def get_permissions(self):
         if self.action == "create":
             return [IsAdminUser()]
