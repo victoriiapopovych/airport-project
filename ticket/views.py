@@ -82,15 +82,30 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["status", "user"]
-    search_fields = ["user__username", "user__email"]
+    search_fields = ["user__email", "user__first_name", "user__last_name"]
 
     pagination_class = CustomPagination
 
+    def is_admin(self, user):
+        return user.is_staff or user.is_superuser
+
+    def is_support_or_manager_or_admin(self, user):
+        return (
+            self.is_admin(user)
+            or user.role in [
+                User.Role.SUPPORT,
+                User.Role.MANAGER,
+            ]
+        )
+    
+    def is_manager_or_admin(self, user):
+        return (
+            self.is_admin(user)
+            or user.role == User.Role.MANAGER
+        )
+
     def get_queryset(self):
-        if (self.request.user.is_staff or self.request.user.is_superuser
-            or self.request.user.role == User.Role.SUPPORT
-            or self.request.user.role == User.Role.MANAGER):
-            
+        if self.is_support_or_manager_or_admin(self.request.user):
             return Booking.objects.all()
         
         return Booking.objects.filter(user=self.request.user)
@@ -98,9 +113,6 @@ class BookingViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return BookingListSerializer
-
-        if self.action == "retrieve":
-            return BookingDetailSerializer
 
         if self.action in ["update", "partial_update"]:
             return BookingManagerAdminUpdateSerializer
@@ -121,7 +133,7 @@ class BookingViewSet(viewsets.ModelViewSet):
                 "Support and manager cannot create bookings."
             )
 
-        if user.is_staff or user.is_superuser:
+        if self.is_admin(user):
             serializer.save(user=user)
             return
 
@@ -131,20 +143,18 @@ class BookingViewSet(viewsets.ModelViewSet):
         serializer.save(user=user)
 
     def perform_update(self, serializer):
-        if not (self.request.user.is_staff or self.request.user.is_superuser
-            or self.request.user.role == User.Role.MANAGER
-        ):
+        if not self.is_manager_or_admin(self.request.user):
             raise PermissionDenied("Only manager or admin can update booking.")
 
         serializer.save()
 
     def perform_destroy(self, instance):
-        if not (self.request.user.is_staff or self.request.user.is_superuser
-                or self.request.user.role == User.Role.MANAGER):
+        if not self.is_manager_or_admin(self.request.user):
             raise PermissionDenied("Only admin and manager can delete this object.")
 
         instance.delete()
-    
+
+
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
@@ -152,14 +162,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         if (
             booking.user != request.user
-            and not (
-                request.user.is_staff
-                or request.user.is_superuser
-                or request.user.role in [
-                    User.Role.SUPPORT,
-                    User.Role.MANAGER,
-                ]
-            )
+            and not self.is_support_or_manager_or_admin(request.user)
         ):
             raise PermissionDenied("You cannot cancel another user's booking.")
 
@@ -175,12 +178,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     def update_status(self, request, pk=None):
         booking = self.get_object()
 
-        if not (
-            request.user.is_staff
-            or request.user.is_superuser
-            or request.user.role == User.Role.SUPPORT
-            or request.user.role == User.Role.MANAGER
-        ):
+        if not self.is_support_or_manager_or_admin(request.user):
             raise PermissionDenied("Only support, manager or admin can update booking status.")
 
         serializer = BookingStatusUpdateSerializer(
@@ -204,13 +202,26 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     pagination_class = CustomPagination
 
+    def is_admin(self, user):
+        return user.is_staff or user.is_superuser
+
+    def is_support_or_manager_or_admin(self, user):
+        return (
+            self.is_admin(user)
+            or user.role in [
+                User.Role.SUPPORT,
+                User.Role.MANAGER,
+            ]
+        )
+
+    def is_manager_or_admin(self, user):
+        return (
+            self.is_admin(user)
+            or user.role == User.Role.MANAGER
+        )
+    
     def get_queryset(self):
-        if (
-            self.request.user.is_staff
-            or self.request.user.is_superuser
-            or self.request.user.role == User.Role.SUPPORT
-            or self.request.user.role == User.Role.MANAGER
-        ):
+        if self.is_support_or_manager_or_admin(self.request.user):
             return Ticket.objects.all()
 
         return Ticket.objects.filter(booking__user=self.request.user)
@@ -218,12 +229,6 @@ class TicketViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return TicketListSerializer
-
-        if self.action == "retrieve":
-            return TicketDetailSerializer
-
-        if self.action in ["update", "partial_update"]:
-            return TicketDetailSerializer
 
         if self.action == "update_status":
             return TicketStatusUpdateSerializer
@@ -238,10 +243,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         ticket_price = flight.base_price + ticket_class.extra_price
 
-        if user.is_staff or user.is_superuser or user.role in [
-            User.Role.SUPPORT,
-            User.Role.MANAGER,
-        ]:
+        if self.is_support_or_manager_or_admin(user):
             ticket = serializer.save(price=ticket_price)
             self.update_booking_total_price(ticket.booking)
             return
@@ -256,11 +258,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         self.update_booking_total_price(ticket.booking)
 
     def perform_update(self, serializer):
-        if not (
-            self.request.user.is_staff
-            or self.request.user.is_superuser
-            or self.request.user.role == User.Role.MANAGER
-        ):
+        if not self.is_manager_or_admin(self.request.user):
             raise PermissionDenied("Only manager or admin can update ticket.")
 
         ticket = serializer.save()
@@ -283,11 +281,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         booking.save()
 
     def perform_destroy(self, instance):
-        if not (
-            self.request.user.is_staff
-            or self.request.user.is_superuser
-            or self.request.user.role == User.Role.MANAGER
-        ):
+        if not self.is_manager_or_admin(self.request.user):
             raise PermissionDenied("Only admin and manager can delete this object.")
 
         booking = instance.booking
@@ -302,14 +296,7 @@ class TicketViewSet(viewsets.ModelViewSet):
 
         if (
             ticket.booking.user != request.user
-            and not (
-                request.user.is_staff
-                or request.user.is_superuser
-                or request.user.role in [
-                    User.Role.SUPPORT,
-                    User.Role.MANAGER,
-                ]
-            )
+            and not self.is_support_or_manager_or_admin(request.user)
         ):
             raise PermissionDenied("You cannot cancel another user's ticket.")
 
@@ -323,12 +310,7 @@ class TicketViewSet(viewsets.ModelViewSet):
     def update_status(self, request, pk=None):
         ticket = self.get_object()
 
-        if not (
-            request.user.is_staff
-            or request.user.is_superuser
-            or request.user.role == User.Role.SUPPORT
-            or request.user.role == User.Role.MANAGER
-        ):
+        if not self.is_support_or_manager_or_admin(request.user):
             raise PermissionDenied("Only support, manager or admin can update ticket status.")
 
         serializer = TicketStatusUpdateSerializer(

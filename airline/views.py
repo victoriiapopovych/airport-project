@@ -25,9 +25,6 @@ class AirlineViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return AirlineListSerializer
 
-        if self.action == "retrieve":
-            return AirlineDetailSerializer
-        
         return AirlineDetailSerializer
 
 
@@ -61,9 +58,6 @@ class AirplaneViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return AirplaneListSerializer
-    
-        if self.action == "retrieve":
-            return AirplaneDetailSerializer
         
         return AirplaneDetailSerializer
 

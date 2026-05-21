@@ -25,9 +25,19 @@ class UserViewSet(viewsets.ModelViewSet):
     
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["role", "is_verified", "citizenship"]
-    search_fields = ["username", "email", "first_name", "last_name", "passport_number"]
+    search_fields = ["email", "first_name", "last_name", "passport_number"]
 
     pagination_class = CustomPagination
+
+    def is_support_or_manager_or_admin(self, user):
+        return (
+            user.is_staff
+            or user.is_superuser
+            or user.role in [
+                User.Role.SUPPORT,
+                User.Role.MANAGER,
+            ]
+        )
 
     def get_permissions(self):
         if self.action == "create":
@@ -36,12 +46,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
     
     def get_queryset(self):
-        if (
-            self.request.user.is_staff
-            or self.request.user.is_superuser
-            or self.request.user.role == User.Role.SUPPORT
-            or self.request.user.role == User.Role.MANAGER
-        ):
+        if self.is_support_or_manager_or_admin(self.request.user):
             return User.objects.all()
 
         return User.objects.filter(id=self.request.user.id)
@@ -49,10 +54,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return UserListSerializer
-        
-        if self.action == "retrieve":
-            return UserDetailSerializer
-        
+    
         return UserDetailSerializer
     
     def perform_destroy(self, instance):
@@ -79,17 +81,8 @@ class UserViewSet(viewsets.ModelViewSet):
     def verify_user(self, request, pk=None):
         user = self.get_object()
 
-        if not (
-            request.user.is_staff
-            or request.user.is_superuser
-            or request.user.role in [
-                User.Role.SUPPORT,
-                User.Role.MANAGER,
-            ]
-        ):
-            raise PermissionDenied(
-                "Only support, manager or admin can verify users."
-            )
+        if not self.is_support_or_manager_or_admin(request.user):
+            raise PermissionDenied("Only support, manager or admin can verify users.")
 
         serializer = UserVerificationSerializer(
             user,

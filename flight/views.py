@@ -24,10 +24,7 @@ class RouteViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return RouteListSerializer
-        
-        if self.action == "retrieve":
-            return RouteDetailSerializer
-        
+    
         return RouteDetailSerializer
 
 
@@ -44,9 +41,6 @@ class FlightViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return FlightListSerializer
-        
-        if self.action == "retrieve":
-            return FlightDetailSerializer
         
         return FlightDetailSerializer
  

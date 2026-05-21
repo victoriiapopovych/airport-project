@@ -50,7 +50,4 @@ class AirportViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return AirportListSerializer
         
-        if self.action == "retrieve":
-            return AirportDetailSerializer
-        
         return AirportDetailSerializer

@@ -30,9 +30,6 @@ class LoungeViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return LoungeListSerializer
         
-        if self.action == "retrieve":
-            return LoungeDetailSerializer
-        
         return LoungeDetailSerializer
 
 
@@ -42,19 +39,25 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["lounge", "status", "access_type", "is_used"]
-    search_fields = ["user__username", "user__email", "lounge__name"]
+    search_fields = ["user__email", "user__first_name", "user__last_name", "lounge__name"]
 
     pagination_class = CustomPagination
+
+    def is_lounge_operator_or_admin(self, user):
+        return (
+            user.is_staff
+            or user.is_superuser
+            or user.role == User.Role.LOUNGE_OPERATOR
+        )
 
     def get_queryset(self):
         user = self.request.user
 
-        if (
-            user.is_staff or user.is_superuser
-            or user.role == User.Role.LOUNGE_OPERATOR
-            or user.role == User.Role.MANAGER
-            or user.role == User.Role.SUPPORT
-        ):
+        if user.is_staff or user.is_superuser or user.role in [
+            User.Role.LOUNGE_OPERATOR,
+            User.Role.MANAGER,
+            User.Role.SUPPORT,
+        ]:
             return LoungeAccess.objects.all()
 
         return LoungeAccess.objects.filter(user=user)
@@ -62,9 +65,6 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return LoungeAccessListSerializer
-
-        if self.action == "retrieve":
-            return LoungeAccessDetailSerializer
 
         if self.action == "create":
             return LoungeAccessCreateSerializer
@@ -95,11 +95,7 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         user = self.request.user
 
-        if not (
-            user.is_staff
-            or user.is_superuser
-            or user.role == User.Role.LOUNGE_OPERATOR
-        ):
+        if not self.is_lounge_operator_or_admin(user):
             raise PermissionDenied("Only lounge operator or admin can update lounge access.")
 
         serializer.save()
@@ -107,11 +103,7 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         user = self.request.user
 
-        if not (
-            user.is_staff
-            or user.is_superuser
-            or user.role == User.Role.LOUNGE_OPERATOR
-        ):
+        if not self.is_lounge_operator_or_admin(user):
             raise PermissionDenied("Only lounge operator or admin can delete lounge access.")
 
         instance.delete()
@@ -123,8 +115,10 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
         if not (
             user.is_staff
             or user.is_superuser
-            or user.role == User.Role.LOUNGE_OPERATOR
-            or user.role == User.Role.MANAGER
+            or user.role in [
+                User.Role.LOUNGE_OPERATOR,
+                User.Role.MANAGER,
+            ]
         ):
             raise PermissionDenied(
                 "Only manager, lounge operator or admin can create lounge access for users."
