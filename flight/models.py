@@ -30,6 +30,7 @@ class Flight(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
     terminal_name = models.CharField(max_length=10, blank=True)
     boarding_gate = models.CharField(max_length=10, blank=True)
+    base_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.flight_number}: {self.route}"
