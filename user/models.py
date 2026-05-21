@@ -5,10 +5,13 @@ from location.models import Country
 # Create your models here.
 class User(AbstractUser):
     class Role(models.TextChoices):
-        ADMIN = "admin", "Admin"
-        USER = "user", "User"
+        PASSENGER = "passenger", "Passenger"
+        SUPPORT = "support", "Support"
+        MANAGER = "manager", "Manager"
+        LOUNGE_OPERATOR = "lounge_operator", "Lounge Operator"
+        
 
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.USER)
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.PASSENGER)
     passport_number = models.CharField(max_length=20, unique=True)
     citizenship = models.ForeignKey(Country, on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     date_of_birth = models.DateField(null=True, blank=True)
@@ -22,3 +25,4 @@ class User(AbstractUser):
             return f"{full_name} ({self.role})"
 
         return f"{self.username} ({self.role})"
+ 
