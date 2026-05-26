@@ -11,6 +11,7 @@ class Lounge(models.Model):
     opening_time = models.TimeField()
     closing_time = models.TimeField()
     capacity = models.PositiveIntegerField()
+    access_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -33,7 +34,12 @@ class LoungeAccess(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="lounge_accesses")
     lounge = models.ForeignKey(Lounge, on_delete=models.CASCADE, related_name="accesses")
     ticket = models.ForeignKey(Ticket, on_delete=models.SET_NULL, null=True, blank=True, related_name="lounge_accesses")
+
     access_type = models.CharField(max_length=30, choices=AccessType.choices)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_paid = models.BooleanField(default=False)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
     valid_from = models.DateTimeField()
     valid_until = models.DateTimeField()
     is_used = models.BooleanField(default=False)

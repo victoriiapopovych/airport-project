@@ -1,6 +1,6 @@
 from rest_framework import viewsets, generics
-from .models import Airline, AirplaneType, Airplane
-from .serializers import AirlineListSerializer, AirlineDetailSerializer, AirplaneTypeSerializer, AirplaneListSerializer, AirplaneDetailSerializer
+from .models import Airline, AirplaneType, Airplane, SeatClass, AirplaneSeat
+from .serializers import AirlineListSerializer, AirlineDetailSerializer, AirplaneTypeSerializer, AirplaneListSerializer, AirplaneDetailSerializer, SeatClassSerializer, AirplaneSeatListSerializer, AirplaneSeatDetailSerializer
 
 from user.permissions import IsManagerOrAdminOrReadOnly
 
@@ -60,4 +60,32 @@ class AirplaneViewSet(viewsets.ModelViewSet):
             return AirplaneListSerializer
         
         return AirplaneDetailSerializer
+    
+
+class SeatClassViewSet(viewsets.ModelViewSet):
+    queryset = SeatClass.objects.all()
+    serializer_class = SeatClassSerializer
+    permission_classes = [IsManagerOrAdminOrReadOnly]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["airline", "class_type", "priority_boarding", "lounge_access"]
+    search_fields = ["airline__name", "class_type"]
+
+    pagination_class = CustomPagination
+
+class AirplaneSeatViewSet(viewsets.ModelViewSet):
+    queryset = AirplaneSeat.objects.all()
+    permission_classes = [IsManagerOrAdminOrReadOnly]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["airplane", "seat_class", "is_window", "is_aisle", "is_exit_row", "has_extra_legroom", "is_active"]
+    search_fields = ["airplane__tail_number", "seat_letter", "seat_class__class_type"]
+
+    pagination_class = CustomPagination
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return AirplaneSeatListSerializer
+
+        return AirplaneSeatDetailSerializer
 

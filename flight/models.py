@@ -1,6 +1,7 @@
 from django.db import models
 from location.models import Airport
-from airline.models import Airline, Airplane
+from airline.models import Airline, Airplane, AirplaneSeat
+from django.conf import settings
 
 # Create your models here.
 class Route(models.Model):
@@ -12,6 +13,7 @@ class Route(models.Model):
     def __str__(self):
         return f"{self.departure_airport.name} → {self.arrival_airport.name}"
     
+
 class Flight(models.Model):
     class Status(models.TextChoices):
         SCHEDULED = "scheduled", "Scheduled"
@@ -37,3 +39,24 @@ class Flight(models.Model):
     
     class Meta:
         ordering = ("departure_time",)
+
+
+class FlightSeat(models.Model):
+    class Status(models.TextChoices):
+        AVAILABLE = "available", "Available"
+        RESERVED = "reserved", "Reserved"
+        SOLD = "sold", "Sold"
+        BLOCKED = "blocked", "Blocked"
+
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="seats")
+    airplane_seat = models.ForeignKey(AirplaneSeat, on_delete=models.CASCADE, related_name="flight_seats")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
+    reserved_until = models.DateTimeField(null=True, blank=True)
+
+    reserved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="reserved_flight_seats")
+
+    class Meta:
+        unique_together = ("flight", "airplane_seat")
+
+    def __str__(self):
+        return f"{self.flight.flight_number} - {self.airplane_seat}"
