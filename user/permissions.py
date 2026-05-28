@@ -9,29 +9,52 @@ class IsAnonymousOrAdmin(BasePermission):
             or request.user.is_staff
         )
 
-class IsLoungeOperatorOrAdminOrReadOnly(BasePermission):
+class CanViewAllUsers(BasePermission):
     def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
-            return True
+        user = request.user
 
         return (
-            request.user.is_authenticated
+            user.is_authenticated
             and (
-                request.user.is_staff
-                or request.user.role == User.Role.LOUNGE_OPERATOR
+                user.is_staff
+                or user.is_superuser
+                or user.role in [
+                    User.Role.SUPPORT,
+                    User.Role.MANAGER,
+                ]
+            )
+        )
+
+
+class CanVerifyUsers(BasePermission):
+    def has_permission(self, request, view):
+        return CanViewAllUsers().has_permission(request, view)
+
+
+class CanDeleteUsers(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+
+        return (
+            user.is_authenticated
+            and (
+                user.is_staff
+                or user.is_superuser
             )
         )
     
-class IsManagerOrAdminOrReadOnly(BasePermission):
-    def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
+class CanUpdateUser(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        if not user.is_authenticated:
+            return False
+
+        if user.is_staff or user.is_superuser:
             return True
 
-        return (
-            request.user.is_authenticated
-            and (
-                request.user.is_staff
-                or request.user.is_superuser
-                or request.user.role == User.Role.MANAGER
-            )
-        )
+        if user.role == User.Role.SUPPORT:
+            return False
+
+        return obj == user
+    

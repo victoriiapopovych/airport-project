@@ -3,9 +3,8 @@ from .models import Lounge, LoungeAccess
 from .serializers import LoungeDetailSerializer, LoungeListSerializer, LoungeAccessDetailSerializer, LoungeAccessListSerializer, LoungeAccessOperatorUpdateSerializer, LoungeAccessAdminSerializer, LoungeAccessCreateSerializer
 
 from rest_framework.permissions import IsAuthenticated
-from user.models import User
-from rest_framework.exceptions import PermissionDenied
-from user.permissions import IsLoungeOperatorOrAdminOrReadOnly
+from lounge.permissions import IsLoungeOperatorOrAdminOrReadOnly, IsLoungeOperatorOrAdmin, CanViewAllLoungeAccesses, CanCreateLoungeAccessForUser, CanCreateOwnLoungeAccess
+
 from rest_framework.decorators import action
 from rest_framework import status
 from rest_framework.response import Response
@@ -43,79 +42,42 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
 
     pagination_class = CustomPagination
 
-    def is_lounge_operator_or_admin(self, user):
-        return (
-            user.is_staff
-            or user.is_superuser
-            or user.role == User.Role.LOUNGE_OPERATOR
-        )
+    def get_permissions(self):
+        if self.action == "create":
+            return [CanCreateOwnLoungeAccess()]
 
-    def can_view_all_accesses(self, user):
-        return (
-            self.is_lounge_operator_or_admin(user)
-            or user.role in [
-                User.Role.MANAGER,
-                User.Role.SUPPORT,
-            ]
-        )
+        if self.action in ["update", "partial_update", "destroy"]:
+            return [IsLoungeOperatorOrAdmin()]
 
-    def can_create_for_user(self, user):
-        return (
-            self.is_lounge_operator_or_admin(user)
-            or user.role == User.Role.MANAGER
-        )
+        if self.action == "create_for_user":
+            return [CanCreateLoungeAccessForUser()]
+
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         user = self.request.user
 
-        if self.can_view_all_accesses(user):
+        if CanViewAllLoungeAccesses().has_permission(self.request, self):
             return LoungeAccess.objects.all()
 
         return LoungeAccess.objects.filter(user=user)
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return LoungeAccessListSerializer
+        serializer_classes = {
+            "list": LoungeAccessListSerializer,
+            "create": LoungeAccessCreateSerializer,
+            "update": LoungeAccessOperatorUpdateSerializer,
+            "partial_update": LoungeAccessOperatorUpdateSerializer,
+            "create_for_user": LoungeAccessAdminSerializer
+        }
 
-        if self.action == "create":
-            return LoungeAccessCreateSerializer
-
-        if self.action == "create_for_user":
-            return LoungeAccessAdminSerializer
-
-        if self.action in ["update", "partial_update"]:
-            return LoungeAccessOperatorUpdateSerializer
-
-        return LoungeAccessDetailSerializer
-
+        return serializer_classes.get(self.action, LoungeAccessDetailSerializer)
+    
     def perform_create(self, serializer):
-        user = self.request.user
-
-        if self.can_view_all_accesses(user):
-            raise PermissionDenied("Only passengers can create lounge access requests.")
-
-        if not user.is_verified:
-            raise PermissionDenied("Only verified users can create lounge access.")
-
-        serializer.save(user=user)
-
-    def perform_update(self, serializer):
-        if not self.is_lounge_operator_or_admin(self.request.user):
-            raise PermissionDenied("Only lounge operator or admin can update lounge access.")
-
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        if not self.is_lounge_operator_or_admin(self.request.user):
-            raise PermissionDenied("Only lounge operator or admin can delete lounge access.")
-
-        instance.delete()
+        serializer.save(user=self.request.user)
 
     @action(detail=False, methods=["post"], url_path="create-for-user")
     def create_for_user(self, request):
-        if not self.can_create_for_user(request.user):
-            raise PermissionDenied("Only manager, lounge operator or admin can create lounge access for users.")
-
         serializer = LoungeAccessAdminSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()

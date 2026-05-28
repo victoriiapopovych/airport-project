@@ -1,13 +1,12 @@
 from rest_framework.response import Response
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 
 from .models import Booking, Ticket
 from .serializers import BookingListSerializer, BookingDetailSerializer, BookingCreateSerializer, TicketListSerializer, TicketDetailSerializer
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
-from user.models import User
-
+from .permissions import CanViewAllBookings, CanCreateBooking, CanCancelBooking
 from rest_framework.decorators import action
 from drf_spectacular.utils import extend_schema
 
@@ -17,8 +16,7 @@ from config.pagination import CustomPagination
 
 from flight.models import FlightSeat
 
-
-class BookingViewSet(viewsets.ModelViewSet):
+class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,  viewsets.GenericViewSet):
     queryset = Booking.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -28,23 +26,20 @@ class BookingViewSet(viewsets.ModelViewSet):
 
     pagination_class = CustomPagination
 
-    def is_admin(self, user):
-        return user.is_staff or user.is_superuser
-
-    def is_support_or_manager_or_admin(self, user):
-        return (
-            self.is_admin(user)
-            or user.role in [
-                User.Role.SUPPORT,
-                User.Role.MANAGER,
-            ]
-        )
-
     def get_queryset(self):
-        if self.is_support_or_manager_or_admin(self.request.user):
+        if CanViewAllBookings().has_permission(self.request, self):
             return Booking.objects.all()
-        
+
         return Booking.objects.filter(user=self.request.user)
+    
+    def get_permissions(self):
+        if self.action == "create":
+            return [CanCreateBooking()]
+
+        if self.action == "cancel":
+            return [CanCancelBooking()]
+
+        return [IsAuthenticated()]
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -54,41 +49,11 @@ class BookingViewSet(viewsets.ModelViewSet):
             return BookingCreateSerializer
 
         return BookingDetailSerializer
-    
-    def perform_create(self, serializer):
-        user = self.request.user
-
-        if user.role in [
-            User.Role.SUPPORT,
-            User.Role.MANAGER,
-        ]:
-            raise PermissionDenied("Support and manager cannot create bookings.")
-
-        if self.is_admin(user):
-            serializer.save()
-            return
-
-        if not user.is_verified:
-            raise PermissionDenied("Only verified users can create bookings.")
-
-        serializer.save()
-
-    def perform_update(self, serializer):
-        raise PermissionDenied("Booking cannot be updated directly. Use status or cancel action.")
-
-    def perform_destroy(self, instance):
-        raise PermissionDenied("Booking cannot be deleted. Use cancel action.")
 
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         booking = self.get_object()
-
-        if (
-            booking.user != request.user
-            and not self.is_support_or_manager_or_admin(request.user)
-        ):
-            raise PermissionDenied("You cannot cancel another user's booking.")
         
         if booking.status == Booking.Status.CANCELLED:
             raise PermissionDenied("Booking is already cancelled.")
@@ -120,20 +85,8 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
 
     pagination_class = CustomPagination
 
-    def is_admin(self, user):
-        return user.is_staff or user.is_superuser
-
-    def is_support_or_manager_or_admin(self, user):
-        return (
-            self.is_admin(user)
-            or user.role in [
-                User.Role.SUPPORT,
-                User.Role.MANAGER,
-            ]
-        )
-
     def get_queryset(self):
-        if self.is_support_or_manager_or_admin(self.request.user):
+        if CanViewAllBookings().has_permission(self.request, self):
             return Ticket.objects.all()
 
         return Ticket.objects.filter(booking__user=self.request.user)

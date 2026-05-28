@@ -2,7 +2,7 @@ from rest_framework import viewsets, generics
 from .models import Airline, AirplaneType, Airplane, SeatClass, AirplaneSeat
 from .serializers import AirlineListSerializer, AirlineDetailSerializer, AirplaneTypeSerializer, AirplaneListSerializer, AirplaneDetailSerializer, SeatClassSerializer, AirplaneSeatListSerializer, AirplaneSeatDetailSerializer
 
-from user.permissions import IsManagerOrAdminOrReadOnly
+from config.permissions import IsManagerOrAdminOrReadOnly
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter

@@ -2,7 +2,7 @@ from rest_framework import viewsets
 from .models import Route, Flight, FlightSeat
 from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer, FlightSeatListSerializer, FlightSeatDetailSerializer, FlightSeatReserveSerializer
 
-from user.permissions import IsManagerOrAdminOrReadOnly
+from config.permissions import IsManagerOrAdminOrReadOnly
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from user.models import User

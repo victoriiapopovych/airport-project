@@ -2,8 +2,7 @@ from rest_framework import viewsets, generics
 from .models import Country, City, Airport
 from .serializers import CountrySerializer, CitySerializer, AirportDetailSerializer, AirportListSerializer
 
-from config.permissions import IsAdminOrReadOnly
-from user.permissions import IsManagerOrAdminOrReadOnly
+from config.permissions import IsAdminOrReadOnly, IsManagerOrAdminOrReadOnly
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
