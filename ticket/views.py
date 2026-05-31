@@ -14,7 +14,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from config.pagination import CustomPagination
 
-from flight.models import FlightSeat
+from .services import cancel_booking
+
 
 class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,  viewsets.GenericViewSet):
     queryset = Booking.objects.all()
@@ -64,20 +65,7 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
         if booking.status == Booking.Status.EXPIRED:
             raise PermissionDenied("Expired booking cannot be cancelled.")
 
-        booking.status = Booking.Status.CANCELLED
-        booking.save()
-
-        for ticket in booking.tickets.all():
-            ticket.status = Ticket.Status.CANCELLED
-            ticket.save()
-
-            flight_seat = ticket.flight_seat
-
-            if flight_seat.status == FlightSeat.Status.HELD:
-                flight_seat.status = FlightSeat.Status.AVAILABLE
-                flight_seat.held_until = None
-                flight_seat.held_by = None
-                flight_seat.save()
+        cancel_booking(booking)
 
         serializer = BookingDetailSerializer(booking)
         return Response(serializer.data)

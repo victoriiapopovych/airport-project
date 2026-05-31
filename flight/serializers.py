@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Route, Flight, FlightSeat
 
+from .services import build_seat_number, calculate_ticket_price
+
 
 class RouteDetailSerializer(serializers.ModelSerializer):
     departure_airport_name = serializers.CharField(source="departure_airport.name", read_only=True)
@@ -58,10 +60,10 @@ class FlightSeatListSerializer(serializers.ModelSerializer):
         fields = ["id", "seat_number", "seat_class", "ticket_price", "status"]
 
     def get_seat_number(self, obj):
-        return f"{obj.airplane_seat.row_number}{obj.airplane_seat.seat_letter}"
+        return build_seat_number(obj)
 
     def get_ticket_price(self, obj):
-        return obj.flight.base_price + obj.airplane_seat.seat_class.extra_price
+        return calculate_ticket_price(obj)
 
 
 class FlightSeatDetailSerializer(serializers.ModelSerializer):
@@ -75,8 +77,8 @@ class FlightSeatDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "flight", "airplane_seat", "airplane_tail_number", "seat_number", "seat_class", "ticket_price", "status", "held_until"]
 
     def get_seat_number(self, obj):
-        return f"{obj.airplane_seat.row_number}{obj.airplane_seat.seat_letter}"
+        return build_seat_number(obj)
 
     def get_ticket_price(self, obj):
-        return obj.flight.base_price + obj.airplane_seat.seat_class.extra_price
+        return calculate_ticket_price(obj)
     

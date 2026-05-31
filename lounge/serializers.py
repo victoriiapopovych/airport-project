@@ -1,65 +1,9 @@
 from rest_framework import serializers
 from .models import Lounge, LoungeAccess
 
-from django.utils import timezone
+from .services import apply_payment_logic, get_ticket_flight_number
 
-
-def validate_access_dates(valid_from, valid_until):
-    if valid_from and valid_until and valid_until <= valid_from:
-        raise serializers.ValidationError("valid_until must be later than valid_from.")
-
-    if valid_until and valid_until <= timezone.now():
-        raise serializers.ValidationError("valid_until must be in the future.")
-    
-
-def validate_lounge_working_hours(lounge, valid_from, valid_until):
-    if not lounge or not valid_from or not valid_until:
-        return
-
-    if (
-        valid_from.time() < lounge.opening_time
-        or valid_until.time() > lounge.closing_time
-    ):
-        raise serializers.ValidationError("Selected access time must be within lounge working hours.")
-
-
-def validate_paid_access_price(access_type, lounge):
-    if (
-        access_type == LoungeAccess.AccessType.PAID_ACCESS
-        and lounge
-        and lounge.access_price <= 0
-    ):
-        raise serializers.ValidationError("This lounge does not have a valid paid access price.")
-
-
-def apply_payment_logic(lounge_access, old_is_paid=False):
-    if lounge_access.access_type == LoungeAccess.AccessType.PAID_ACCESS:
-        lounge_access.price = lounge_access.lounge.access_price
-
-        if lounge_access.is_paid and not old_is_paid:
-            lounge_access.paid_at = timezone.now()
-            lounge_access.status = LoungeAccess.Status.APPROVED
-
-        elif not lounge_access.is_paid:
-            lounge_access.paid_at = None
-
-    else:
-        lounge_access.price = 0
-        lounge_access.is_paid = True
-        lounge_access.paid_at = None
-        lounge_access.status = LoungeAccess.Status.APPROVED
-
-def validate_lounge_capacity(lounge, valid_from, valid_until):
-    active_accesses = LoungeAccess.objects.filter(
-        lounge=lounge,
-        status=LoungeAccess.Status.APPROVED,
-        is_used=True,
-        valid_from__lt=valid_until,
-        valid_until__gt=valid_from,
-    ).count()
-
-    if active_accesses >= lounge.capacity:
-        raise serializers.ValidationError("Lounge capacity exceeded for selected time.")
+from .validators import validate_access_dates, validate_lounge_working_hours, validate_paid_access_price, validate_lounge_capacity
 
 
 class LoungeDetailSerializer(serializers.ModelSerializer):
@@ -89,9 +33,7 @@ class LoungeAccessDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "status", "is_used", "price", "is_paid", "paid_at", "ticket_flight_number"]
 
     def get_ticket_flight_number(self, obj):
-        if obj.ticket:
-            return obj.ticket.flight_seat.flight.flight_number
-        return None
+        return get_ticket_flight_number(obj)
     
     
 class LoungeAccessListSerializer(serializers.ModelSerializer):
@@ -104,10 +46,7 @@ class LoungeAccessListSerializer(serializers.ModelSerializer):
         fields = ["id", "user_name", "lounge_name", "ticket_flight_number", "access_type", "price", "is_paid", "valid_until", "is_used", "status"]
 
     def get_ticket_flight_number(self, obj):
-        if obj.ticket:
-            return obj.ticket.flight_seat.flight.flight_number
-        return None
-    
+        return get_ticket_flight_number(obj)
 
 class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
     class Meta:

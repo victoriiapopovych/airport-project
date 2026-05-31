@@ -3,44 +3,10 @@ from .models import Booking, Ticket
 from flight.models import FlightSeat
 
 from django.db import transaction
-from django.utils import timezone
 
+from .services import expire_booking, create_booking
 
-def release_expired_hold(flight_seat):
-    if (
-        flight_seat.status == FlightSeat.Status.HELD
-        and flight_seat.held_until
-        and flight_seat.held_until < timezone.now()
-    ):
-        flight_seat.status = FlightSeat.Status.AVAILABLE
-        flight_seat.held_until = None
-        flight_seat.held_by = None
-        flight_seat.save()
-
-def expire_booking(booking):
-    if booking.status != Booking.Status.PENDING:
-        return
-
-    expired_seats = booking.tickets.filter(
-        flight_seat__status=FlightSeat.Status.HELD,
-        flight_seat__held_until__lt=timezone.now(),
-    )
-
-    if not expired_seats.exists():
-        return
-
-    booking.status = Booking.Status.EXPIRED
-    booking.save()
-
-    for ticket in booking.tickets.all():
-        ticket.status = Ticket.Status.CANCELLED
-        ticket.save()
-
-        flight_seat = ticket.flight_seat
-        flight_seat.status = FlightSeat.Status.AVAILABLE
-        flight_seat.held_until = None
-        flight_seat.held_by = None
-        flight_seat.save()
+from .validators import validate_ticket_limit, validate_duplicate_seats, validate_same_flight, validate_flight_status, validate_flight_departure, validate_available_seats, validate_passenger_name
 
 
 class BookingDetailSerializer(serializers.ModelSerializer):
@@ -52,14 +18,12 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["user", "created_at", "status", "total_price"]
     
 
-
 class BookingListSerializer(serializers.ModelSerializer):
     user_name = serializers.StringRelatedField(source="user", read_only=True)
 
     class Meta:
         model = Booking
         fields = ["id", "user_name", "created_at", "status", "total_price"]
-
 
 
 class TicketDetailSerializer(serializers.ModelSerializer):
@@ -76,7 +40,6 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         return f"{obj.flight_seat.airplane_seat.row_number}{obj.flight_seat.airplane_seat.seat_letter}"
 
     
-    
 class TicketListSerializer(serializers.ModelSerializer):
     flight_number = serializers.CharField(source="flight_seat.flight.flight_number", read_only=True)
     seat_number = serializers.SerializerMethodField()
@@ -88,22 +51,6 @@ class TicketListSerializer(serializers.ModelSerializer):
 
     def get_seat_number(self, obj):
         return f"{obj.flight_seat.airplane_seat.row_number}{obj.flight_seat.airplane_seat.seat_letter}"
-    
-
-class BookingStatusUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Booking
-        fields = ["status"]
-
-class TicketStatusUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Ticket
-        fields = ["status"]
-
-class BookingManagerAdminUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Booking
-        fields = ["status"]
 
 
 class TicketCreateItemSerializer(serializers.Serializer):
@@ -112,23 +59,10 @@ class TicketCreateItemSerializer(serializers.Serializer):
     passenger_last_name = serializers.CharField(max_length=100)
 
     def validate_passenger_first_name(self, value):
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError("Passenger first name cannot be empty.")
-
-        return value
+        return validate_passenger_name(value, "Passenger first name")
 
     def validate_passenger_last_name(self, value):
-        value = value.strip()
-
-        if not value:
-            raise serializers.ValidationError("Passenger last name cannot be empty.")
-
-        return value
-    
-
-MAX_TICKETS_PER_BOOKING = 10
+        return validate_passenger_name(value, "Passenger last name")
 
 
 class BookingCreateSerializer(serializers.ModelSerializer):
@@ -142,110 +76,36 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         user = self.context["request"].user
 
-        pending_bookings = Booking.objects.filter(
-            user=user,
-            status=Booking.Status.PENDING,
-        )
+        pending_bookings = Booking.objects.filter(user=user, status=Booking.Status.PENDING,)
 
         for booking in pending_bookings:
             expire_booking(booking)
 
-        if Booking.objects.filter(
-            user=user,
-            status=Booking.Status.PENDING,
-        ).exists():
-            raise serializers.ValidationError(
-                "You already have a pending booking."
-            )
+        if Booking.objects.filter(user=user, status=Booking.Status.PENDING).exists():
+            raise serializers.ValidationError("You already have a pending booking.")
 
         return attrs
 
     def validate_tickets(self, tickets):
-        if not tickets:
-            raise serializers.ValidationError("At least one ticket is required.")
-        
-
-        if len(tickets) > MAX_TICKETS_PER_BOOKING:
-            raise serializers.ValidationError(f"You can book maximum {MAX_TICKETS_PER_BOOKING} tickets at once.")
-
+        validate_ticket_limit(tickets)
 
         flight_seats = [item["flight_seat"] for item in tickets]
 
-        if len(flight_seats) != len(set(flight_seats)):
-            raise serializers.ValidationError("You cannot book the same seat twice.")
-        
-
-        flight_ids = {flight_seat.flight_id for flight_seat in flight_seats}
-
-        if len(flight_ids) > 1:
-            raise serializers.ValidationError("All seats in one booking must belong to the same flight.")
-        
+        validate_duplicate_seats(flight_seats)
+        validate_same_flight(flight_seats)
 
         flight = flight_seats[0].flight
 
-        if flight.status in [
-            flight.Status.CANCELLED,
-            flight.Status.DEPARTED,
-            flight.Status.ARRIVED,
-        ]:
-            raise serializers.ValidationError(f"Flight {flight.flight_number} is not available for booking.")
-        
+        validate_flight_status(flight)
+        validate_flight_departure(flight)
 
-        if flight.departure_time <= timezone.now():
-            raise serializers.ValidationError(f"Flight {flight.flight_number} has already departed.")
-        
-
-        for flight_seat in flight_seats:
-            release_expired_hold(flight_seat)
-
-            if flight_seat.status != FlightSeat.Status.AVAILABLE:
-                raise serializers.ValidationError(f"Seat {flight_seat} is not available.")
+        validate_available_seats(flight_seats)
 
         return tickets
-
+    
     @transaction.atomic
     def create(self, validated_data):
         tickets_data = validated_data.pop("tickets")
         user = self.context["request"].user
 
-        booking = Booking.objects.create(
-            user=user,
-            status=Booking.Status.PENDING,
-        )
-
-        total_price = 0
-
-        for item in tickets_data:
-            flight_seat = FlightSeat.objects.select_for_update().get(
-                id=item["flight_seat"].id
-            )
-
-            release_expired_hold(flight_seat)
-
-            if flight_seat.status != FlightSeat.Status.AVAILABLE:
-                raise serializers.ValidationError(f"Seat {flight_seat} is not available.")
-
-            seat_class = flight_seat.airplane_seat.seat_class
-
-            price = flight_seat.flight.base_price + seat_class.extra_price
-
-            Ticket.objects.create(
-                booking=booking,
-                flight_seat=flight_seat,
-                passenger_first_name=item["passenger_first_name"],
-                passenger_last_name=item["passenger_last_name"],
-                price=price,
-                status=Ticket.Status.PENDING,
-            )
-
-            flight_seat.status = FlightSeat.Status.HELD
-            flight_seat.held_until = timezone.now() + timezone.timedelta(minutes=15)
-            flight_seat.held_by = user
-            flight_seat.save()
-
-            total_price += price
-
-        booking.total_price = total_price
-        booking.save()
-
-        return booking
+        return create_booking(user, tickets_data)
