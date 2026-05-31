@@ -8,6 +8,20 @@ def validate_access_dates(valid_from, valid_until):
     if valid_from and valid_until and valid_until <= valid_from:
         raise serializers.ValidationError("valid_until must be later than valid_from.")
 
+    if valid_until and valid_until <= timezone.now():
+        raise serializers.ValidationError("valid_until must be in the future.")
+    
+
+def validate_lounge_working_hours(lounge, valid_from, valid_until):
+    if not lounge or not valid_from or not valid_until:
+        return
+
+    if (
+        valid_from.time() < lounge.opening_time
+        or valid_until.time() > lounge.closing_time
+    ):
+        raise serializers.ValidationError("Selected access time must be within lounge working hours.")
+
 
 def validate_paid_access_price(access_type, lounge):
     if (
@@ -108,6 +122,8 @@ class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
         access_type = attrs.get("access_type", self.instance.access_type)
 
         validate_access_dates(valid_from, valid_until)
+        validate_lounge_working_hours(self.instance.lounge, valid_from, valid_until)
+        
 
         if (
             access_type == LoungeAccess.AccessType.PAID_ACCESS
@@ -146,7 +162,11 @@ class LoungeAccessAdminSerializer(serializers.ModelSerializer):
         lounge = attrs.get("lounge", self.instance.lounge if self.instance else None)
 
         validate_access_dates(valid_from, valid_until)
+        validate_lounge_working_hours(lounge, valid_from, valid_until)
         validate_paid_access_price(access_type, lounge)
+
+        if lounge and not lounge.is_active:
+            raise serializers.ValidationError("This lounge is currently inactive.")
 
         return attrs
 
@@ -171,8 +191,41 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, attrs):
+        request = self.context["request"]
+
+        ticket = attrs.get("ticket")
+        access_type = attrs["access_type"]
+
         validate_access_dates(attrs["valid_from"], attrs["valid_until"])
-        validate_paid_access_price(attrs["access_type"], attrs["lounge"])
+        validate_lounge_working_hours(attrs["lounge"], attrs["valid_from"], attrs["valid_until"])
+        validate_paid_access_price(access_type, attrs["lounge"])
+
+        if not attrs["lounge"].is_active:
+            raise serializers.ValidationError("This lounge is currently inactive.")
+
+        if ticket and ticket.booking.user != request.user:
+            raise serializers.ValidationError("You can use only your own ticket.")
+
+        if ticket and ticket.status != ticket.Status.PAID:
+            raise serializers.ValidationError("Lounge access is available only for paid tickets.")
+        
+        if ticket and LoungeAccess.objects.filter(ticket=ticket).exists():
+            raise serializers.ValidationError("Lounge access for this ticket already exists.")
+        
+        if ticket:
+            departure_airport = ticket.flight_seat.flight.route.departure_airport
+
+            if attrs["lounge"].airport != departure_airport:
+                raise serializers.ValidationError("Lounge must be located in the departure airport of the ticket flight.")
+
+        if access_type == LoungeAccess.AccessType.BUSINESS_CLASS:
+            if not ticket:
+                raise serializers.ValidationError("Business class access requires a ticket.")
+
+            seat_class = ticket.flight_seat.airplane_seat.seat_class
+
+            if not seat_class.lounge_access:
+                raise serializers.ValidationError("This ticket class does not include lounge access.")
 
         return attrs
 

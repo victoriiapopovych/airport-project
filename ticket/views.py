@@ -54,9 +54,15 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         booking = self.get_object()
-        
+
         if booking.status == Booking.Status.CANCELLED:
             raise PermissionDenied("Booking is already cancelled.")
+
+        if booking.status == Booking.Status.PAID:
+            raise PermissionDenied("Paid booking cannot be cancelled without refund logic.")
+
+        if booking.status == Booking.Status.EXPIRED:
+            raise PermissionDenied("Expired booking cannot be cancelled.")
 
         booking.status = Booking.Status.CANCELLED
         booking.save()
@@ -66,10 +72,12 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
             ticket.save()
 
             flight_seat = ticket.flight_seat
-            flight_seat.status = FlightSeat.Status.AVAILABLE
-            flight_seat.reserved_until = None
-            flight_seat.reserved_by = None
-            flight_seat.save()
+
+            if flight_seat.status == FlightSeat.Status.HELD:
+                flight_seat.status = FlightSeat.Status.AVAILABLE
+                flight_seat.held_until = None
+                flight_seat.held_by = None
+                flight_seat.save()
 
         serializer = BookingDetailSerializer(booking)
         return Response(serializer.data)

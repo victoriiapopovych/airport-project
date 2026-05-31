@@ -1,6 +1,14 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 from user.models import User
 
+
+class IsLoungeOperatorOrAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+
+        return IsLoungeOperatorOrAdmin().has_permission(request, view)
+    
 
 class IsLoungeOperatorOrAdmin(BasePermission):
     def has_permission(self, request, view):

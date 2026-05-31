@@ -6,13 +6,14 @@ from flight.models import FlightSeat
 class Booking(models.Model):
 
     class Status(models.TextChoices):
-        CREATED = "created", "Created"
+        PENDING = "pending", "Pending"
         PAID = "paid", "Paid"
         CANCELLED = "cancelled", "Cancelled"
+        EXPIRED = "expired", "Expired"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bookings")
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
@@ -21,7 +22,7 @@ class Booking(models.Model):
 class Ticket(models.Model):
 
     class Status(models.TextChoices):
-        BOOKED = "booked", "Booked"
+        PENDING = "pending", "Pending"
         PAID = "paid", "Paid"
         USED = "used", "Used"
         CANCELLED = "cancelled", "Cancelled"
@@ -31,7 +32,7 @@ class Ticket(models.Model):
     passenger_first_name = models.CharField(max_length=100)
     passenger_last_name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.BOOKED)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
 
     def __str__(self):
         return f"{self.passenger_first_name} {self.passenger_last_name} - {self.flight_seat}"

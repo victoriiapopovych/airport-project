@@ -1,18 +1,13 @@
 from rest_framework import viewsets
 from .models import Route, Flight, FlightSeat
-from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer, FlightSeatListSerializer, FlightSeatDetailSerializer, FlightSeatReserveSerializer
+from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer, FlightSeatListSerializer, FlightSeatDetailSerializer
 
 from config.permissions import IsManagerOrAdminOrReadOnly
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
-from user.models import User
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from .filters import RouteFilter, FlightFilter
 from config.pagination import CustomPagination
-
-from rest_framework.decorators import action
 
 
 class RouteViewSet(viewsets.ModelViewSet):
@@ -63,24 +58,4 @@ class FlightSeatViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return FlightSeatListSerializer
 
-        if self.action == "reserve":
-            return FlightSeatReserveSerializer
-
         return FlightSeatDetailSerializer
-
-    @action(detail=True, methods=["post"])
-    def reserve(self, request, pk=None):
-        if request.user.role != User.Role.PASSENGER:
-            raise PermissionDenied("Only passengers can reserve seats.")
-
-        if not request.user.is_verified:
-            raise PermissionDenied("Only verified passengers can reserve seats.")
-
-        flight_seat = self.get_object()
-
-        serializer = self.get_serializer(flight_seat, data={}, partial=True)
-
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(serializer.data)

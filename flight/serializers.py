@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from .models import Route, Flight, FlightSeat
 
-from django.utils import timezone
-from datetime import timedelta
-
 
 class RouteDetailSerializer(serializers.ModelSerializer):
     departure_airport_name = serializers.CharField(source="departure_airport.name", read_only=True)
@@ -75,7 +72,7 @@ class FlightSeatDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FlightSeat
-        fields = ["id", "flight", "airplane_seat", "airplane_tail_number", "seat_number", "seat_class", "ticket_price", "status", "reserved_until"]
+        fields = ["id", "flight", "airplane_seat", "airplane_tail_number", "seat_number", "seat_class", "ticket_price", "status", "held_until"]
 
     def get_seat_number(self, obj):
         return f"{obj.airplane_seat.row_number}{obj.airplane_seat.seat_letter}"
@@ -83,38 +80,3 @@ class FlightSeatDetailSerializer(serializers.ModelSerializer):
     def get_ticket_price(self, obj):
         return obj.flight.base_price + obj.airplane_seat.seat_class.extra_price
     
-
-class FlightSeatReserveSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FlightSeat
-        fields = ["id", "status", "reserved_until", "reserved_by"]
-        read_only_fields = ["id", "status", "reserved_until", "reserved_by"]
-
-    def validate(self, attrs):
-        if (
-            self.instance.status == FlightSeat.Status.RESERVED
-            and self.instance.reserved_until is not None
-            and self.instance.reserved_until < timezone.now()
-        ):
-            self.instance.status = FlightSeat.Status.AVAILABLE
-            self.instance.reserved_until = None
-            self.instance.reserved_by = None
-            self.instance.save()
-
-        if self.instance.status != FlightSeat.Status.AVAILABLE:
-            raise serializers.ValidationError(
-                "This seat is not available for reservation."
-            )
-
-        return attrs
-
-    def update(self, instance, validated_data):
-        request = self.context["request"]
-
-        instance.status = FlightSeat.Status.RESERVED
-        instance.reserved_until = timezone.now() + timedelta(minutes=15)
-        instance.reserved_by = request.user
-        instance.save()
-
-        return instance
-
