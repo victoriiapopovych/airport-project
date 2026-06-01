@@ -9,7 +9,7 @@ class UserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
+            "email",
             "first_name",
             "last_name",
             "role",
@@ -26,15 +26,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-
-            # AbstractUser fields
-            "username",
-            "first_name",
-            "last_name",
             "email",
             "password",
-
-            # CustomUser fields
+            "first_name",
+            "last_name",
             "role",
             "passport_number",
             "citizenship",
@@ -44,13 +39,14 @@ class UserDetailSerializer(serializers.ModelSerializer):
             "is_verified",
         ]
         read_only_fields = ["id", "role", "is_verified"]
- 
+
     def create(self, validated_data):
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        password = validated_data.pop("password", None)
+
+        return User.objects.create_user(
+            password=password,
+            **validated_data
+        )
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
@@ -72,7 +68,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id",
-            "username",
             "email",
             "password",
             "first_name",
@@ -84,15 +79,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        password = validated_data.pop("password")
+        validated_data["role"] = User.Role.PASSENGER
+        validated_data["is_verified"] = False
 
-        user = User(**validated_data)
-        user.role = User.Role.PASSENGER
-        user.is_verified = False
-        user.set_password(password)
-        user.save()
-
-        return user
+        return User.objects.create_user(**validated_data)
+    
  
 class UserVerificationSerializer(serializers.ModelSerializer):
     class Meta:

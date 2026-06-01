@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Flight, Route
+from .models import Flight, Route, FlightSeat
 
 # Register your models here.
 @admin.register(Route)
@@ -13,3 +13,9 @@ class FlightAdmin(admin.ModelAdmin):
     list_display = ("flight_number", "route", "airline", "airplane", "departure_time", "arrival_time", "status", "terminal_name", "boarding_gate")
     list_filter = ("status", "airline")
     search_fields = ("flight_number", "airline__name")
+
+@admin.register(FlightSeat)
+class FlightSeatAdmin(admin.ModelAdmin):
+    list_display = ("flight", "airplane_seat", "status", "held_until")
+    list_filter = ("flight", "status")
+    search_fields = ("flight__flight_number", "airplane_seat__seat_letter")

@@ -1,13 +1,12 @@
 from rest_framework import viewsets
-from .models import Route, Flight
-from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer
+from .models import Route, Flight, FlightSeat
+from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer, FlightSeatListSerializer, FlightSeatDetailSerializer
 
-from user.permissions import IsManagerOrAdminOrReadOnly
+from config.permissions import IsManagerOrAdminOrReadOnly
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from .filters import RouteFilter, FlightFilter
-
 from config.pagination import CustomPagination
 
 
@@ -24,10 +23,7 @@ class RouteViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "list":
             return RouteListSerializer
-        
-        if self.action == "retrieve":
-            return RouteDetailSerializer
-        
+    
         return RouteDetailSerializer
 
 
@@ -45,8 +41,21 @@ class FlightViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return FlightListSerializer
         
-        if self.action == "retrieve":
-            return FlightDetailSerializer
-        
         return FlightDetailSerializer
- 
+    
+
+class FlightSeatViewSet(viewsets.ModelViewSet):
+    queryset = FlightSeat.objects.all()
+    permission_classes = [IsManagerOrAdminOrReadOnly]
+
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ["flight", "airplane_seat", "status"]
+    search_fields = ["flight__flight_number", "airplane_seat__seat_letter"]
+
+    pagination_class = CustomPagination
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return FlightSeatListSerializer
+
+        return FlightSeatDetailSerializer
