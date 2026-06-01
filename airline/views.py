@@ -1,6 +1,6 @@
-from rest_framework import viewsets, generics
+from rest_framework import viewsets, generics, mixins
 from .models import Airline, AirplaneType, Airplane, SeatClass, AirplaneSeat
-from .serializers import AirlineListSerializer, AirlineDetailSerializer, AirplaneTypeSerializer, AirplaneListSerializer, AirplaneDetailSerializer, SeatClassSerializer, AirplaneSeatListSerializer, AirplaneSeatDetailSerializer
+from .serializers import AirlineListSerializer, AirlineDetailSerializer, AirplaneTypeSerializer, AirplaneListSerializer, AirplaneDetailSerializer, SeatClassSerializer, AirplaneSeatListSerializer, AirplaneSeatDetailSerializer, AirplaneSeatGenerationSerializer
 
 from config.permissions import IsManagerOrAdminOrReadOnly
 
@@ -9,6 +9,12 @@ from rest_framework.filters import SearchFilter
 from .filters import AirlineFilter, AirplaneTypeFilter, AirplaneFilter
 
 from config.pagination import CustomPagination
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
+
+from .services import generate_airplane_seats
 
 
 class AirlineViewSet(viewsets.ModelViewSet):
@@ -59,7 +65,41 @@ class AirplaneViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return AirplaneListSerializer
         
+        if self.action == "generate_seats":
+            return AirplaneSeatGenerationSerializer
+        
         return AirplaneDetailSerializer
+    
+    @action(detail=True, methods=["post"], url_path="generate-seats", serializer_class=AirplaneSeatGenerationSerializer)
+    def generate_seats(self, request, pk=None):
+        airplane = self.get_object()
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        try:
+            created_count = generate_airplane_seats(
+                airplane=airplane,
+                rows=data.get("rows", 30),
+                letters=data.get("letters", ["A", "B", "C", "D", "E", "F"]),
+                class_rows=data.get("class_rows", {}),
+                exit_rows=data.get("exit_rows", []),
+                window_letters=data.get("window_letters", None),
+                aisle_letters=data.get("aisle_letters", []),
+            )
+
+        except ValueError as error:
+            return Response(
+                {"detail": str(error)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {"detail": f"{created_count} seats were generated successfully."},
+            status=status.HTTP_201_CREATED
+        )
     
 
 class SeatClassViewSet(viewsets.ModelViewSet):
@@ -73,7 +113,7 @@ class SeatClassViewSet(viewsets.ModelViewSet):
 
     pagination_class = CustomPagination
 
-class AirplaneSeatViewSet(viewsets.ModelViewSet):
+class AirplaneSeatViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     queryset = AirplaneSeat.objects.all()
     permission_classes = [IsManagerOrAdminOrReadOnly]
 

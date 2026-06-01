@@ -65,6 +65,9 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
         if booking.status == Booking.Status.EXPIRED:
             raise PermissionDenied("Expired booking cannot be cancelled.")
 
+        if booking.status != Booking.Status.PENDING:
+            raise PermissionDenied("Only pending booking can be cancelled.")
+
         cancel_booking(booking)
 
         serializer = BookingDetailSerializer(booking)

@@ -6,25 +6,13 @@ from flight.models import FlightSeat
 from rest_framework import serializers
 
 
-def release_expired_hold(flight_seat):
-    if (
-        flight_seat.status == FlightSeat.Status.HELD
-        and flight_seat.held_until
-        and flight_seat.held_until < timezone.now()
-    ):
-        flight_seat.status = FlightSeat.Status.AVAILABLE
-        flight_seat.held_until = None
-        flight_seat.held_by = None
-        flight_seat.save()
-
-
 def expire_booking(booking):
     if booking.status != Booking.Status.PENDING:
         return
 
     expired_seats = booking.tickets.filter(
-        flight_seat__status=FlightSeat.Status.HELD,
-        flight_seat__held_until__lt=timezone.now(),
+        flight_seat__status=FlightSeat.Status.PENDING,
+        flight_seat__pending_until__lt=timezone.now(),
     )
 
     if not expired_seats.exists():
@@ -39,8 +27,8 @@ def expire_booking(booking):
 
         flight_seat = ticket.flight_seat
         flight_seat.status = FlightSeat.Status.AVAILABLE
-        flight_seat.held_until = None
-        flight_seat.held_by = None
+        flight_seat.pending_until = None
+        flight_seat.pending_by = None
         flight_seat.save()
 
 
@@ -54,10 +42,10 @@ def cancel_booking(booking):
 
         flight_seat = ticket.flight_seat
 
-        if flight_seat.status == FlightSeat.Status.HELD:
+        if flight_seat.status == FlightSeat.Status.PENDING:
             flight_seat.status = FlightSeat.Status.AVAILABLE
-            flight_seat.held_until = None
-            flight_seat.held_by = None
+            flight_seat.pending_until = None
+            flight_seat.pending_by = None
             flight_seat.save()
 
 
@@ -73,8 +61,6 @@ def create_booking(user, tickets_data):
         flight_seat = FlightSeat.objects.select_for_update().get(
             id=item["flight_seat"].id
         )
-
-        release_expired_hold(flight_seat)
 
         if flight_seat.status != FlightSeat.Status.AVAILABLE:
             raise serializers.ValidationError(f"Seat {flight_seat} is not available.")
@@ -92,9 +78,9 @@ def create_booking(user, tickets_data):
             status=Ticket.Status.PENDING,
         )
 
-        flight_seat.status = FlightSeat.Status.HELD
-        flight_seat.held_until = timezone.now() + timezone.timedelta(minutes=15)
-        flight_seat.held_by = user
+        flight_seat.status = FlightSeat.Status.PENDING
+        flight_seat.pending_until = timezone.now() + timezone.timedelta(minutes=15)
+        flight_seat.pending_by = user
         flight_seat.save()
 
         total_price += price

@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "user",
     "location",
     "airline",
-    "flight",
+    "flight.apps.FlightsConfig",
     "ticket",
     "lounge",
 

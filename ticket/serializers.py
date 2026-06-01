@@ -4,7 +4,7 @@ from flight.models import FlightSeat
 
 from django.db import transaction
 
-from .services import expire_booking, create_booking
+from .services import create_booking
 
 from .validators import validate_ticket_limit, validate_duplicate_seats, validate_same_flight, validate_flight_status, validate_flight_departure, validate_available_seats, validate_passenger_name
 
@@ -75,11 +75,6 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         user = self.context["request"].user
-
-        pending_bookings = Booking.objects.filter(user=user, status=Booking.Status.PENDING,)
-
-        for booking in pending_bookings:
-            expire_booking(booking)
 
         if Booking.objects.filter(user=user, status=Booking.Status.PENDING).exists():
             raise serializers.ValidationError("You already have a pending booking.")

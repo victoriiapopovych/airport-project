@@ -44,16 +44,16 @@ class Flight(models.Model):
 class FlightSeat(models.Model):
     class Status(models.TextChoices):
         AVAILABLE = "available", "Available"
-        HELD = "held", "Held"
-        SOLD = "sold", "Sold"
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
         BLOCKED = "blocked", "Blocked"
 
     flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name="seats")
     airplane_seat = models.ForeignKey(AirplaneSeat, on_delete=models.CASCADE, related_name="flight_seats")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
 
-    held_until = models.DateTimeField(null=True, blank=True)
-    held_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="held_flight_seats")
+    pending_until = models.DateTimeField(null=True, blank=True)
+    pending_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="pending_flight_seats")
 
     class Meta:
         unique_together = ("flight", "airplane_seat")

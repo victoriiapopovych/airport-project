@@ -7,4 +7,7 @@ def build_seat_number(flight_seat):
 
 
 def calculate_ticket_price(flight_seat):
-    return (flight_seat.flight.base_price + flight_seat.airplane_seat.seat_class.extra_price)
+    base_price = flight_seat.flight.base_price
+    extra_price = flight_seat.airplane_seat.seat_class.extra_price
+
+    return base_price + extra_price

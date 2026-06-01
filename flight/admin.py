@@ -16,6 +16,6 @@ class FlightAdmin(admin.ModelAdmin):
 
 @admin.register(FlightSeat)
 class FlightSeatAdmin(admin.ModelAdmin):
-    list_display = ("flight", "airplane_seat", "status", "held_until")
+    list_display = ("flight", "airplane_seat", "status", "pending_until")
     list_filter = ("flight", "status")
     search_fields = ("flight__flight_number", "airplane_seat__seat_letter")

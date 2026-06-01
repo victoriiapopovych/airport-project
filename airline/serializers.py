@@ -67,4 +67,41 @@ class AirplaneSeatDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = AirplaneSeat
         fields = ["id", "airplane", "airplane_tail_number", "seat_class", "seat_class_name", "row_number", "seat_letter", "is_window", "is_aisle", "is_exit_row", "has_extra_legroom", "is_active"]
+
+
+class AirplaneSeatGenerationSerializer(serializers.Serializer):
+    rows = serializers.IntegerField(default=30, min_value=1)
+
+    letters = serializers.ListField(
+        child=serializers.CharField(max_length=1),
+        default=["A", "B", "C", "D", "E", "F"],
+        allow_empty=False
+    )
+
+    class_rows = serializers.DictField(
+        child=serializers.ListField(
+            child=serializers.IntegerField(min_value=1)
+        ),
+        required=False,
+        default=dict
+    )
+
+    exit_rows = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        required=False,
+        default=list
+    )
+
+    window_letters = serializers.ListField(
+        child=serializers.CharField(max_length=1),
+        required=False,
+        allow_empty=True
+    )
+
+    aisle_letters = serializers.ListField(
+        child=serializers.CharField(max_length=1),
+        required=False,
+        default=list,
+        allow_empty=True
+    )
  

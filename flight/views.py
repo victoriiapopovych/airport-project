@@ -1,4 +1,4 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from .models import Route, Flight, FlightSeat
 from .serializers import RouteListSerializer, RouteDetailSerializer, FlightListSerializer, FlightDetailSerializer, FlightSeatListSerializer, FlightSeatDetailSerializer
 
@@ -44,7 +44,7 @@ class FlightViewSet(viewsets.ModelViewSet):
         return FlightDetailSerializer
     
 
-class FlightSeatViewSet(viewsets.ModelViewSet):
+class FlightSeatViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
     queryset = FlightSeat.objects.all()
     permission_classes = [IsManagerOrAdminOrReadOnly]
 
