@@ -9,6 +9,9 @@ from rest_framework.filters import SearchFilter
 from .filters import RouteFilter, FlightFilter
 from config.pagination import CustomPagination
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.all()
@@ -25,6 +28,36 @@ class RouteViewSet(viewsets.ModelViewSet):
             return RouteListSerializer
     
         return RouteDetailSerializer
+    
+    def perform_create(self, serializer):
+        route = serializer.save()
+
+        logger.info(
+            "Route %s was created by user %s.",
+            route,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_update(self, serializer):
+        route = serializer.save()
+
+        logger.info(
+            "Route %s was updated by user %s.",
+            route,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_destroy(self, instance):
+        route_name = str(instance)
+        user_id = self.request.user.id if self.request.user.is_authenticated else "anonymous"
+
+        instance.delete()
+
+        logger.warning(
+            "Route %s was deleted by user %s.",
+            route_name,
+            user_id,
+        )
 
 
 class FlightViewSet(viewsets.ModelViewSet):
@@ -42,6 +75,36 @@ class FlightViewSet(viewsets.ModelViewSet):
             return FlightListSerializer
         
         return FlightDetailSerializer
+
+    def perform_create(self, serializer):
+        flight = serializer.save()
+
+        logger.info(
+            "Flight %s was created by user %s.",
+            flight.flight_number,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_update(self, serializer):
+        flight = serializer.save()
+
+        logger.info(
+            "Flight %s was updated by user %s.",
+            flight.flight_number,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_destroy(self, instance):
+        flight_number = instance.flight_number
+        user_id = self.request.user.id if self.request.user.is_authenticated else "anonymous"
+
+        instance.delete()
+
+        logger.warning(
+            "Flight %s was deleted by user %s.",
+            flight_number,
+            user_id,
+        )
     
 
 class FlightSeatViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):

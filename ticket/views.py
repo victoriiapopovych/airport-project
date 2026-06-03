@@ -16,6 +16,9 @@ from config.pagination import CustomPagination
 
 from .services import cancel_booking
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,  viewsets.GenericViewSet):
     queryset = Booking.objects.all()
@@ -50,25 +53,42 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
             return BookingCreateSerializer
 
         return BookingDetailSerializer
+    
+    def perform_create(self, serializer):
+        booking = serializer.save()
+
+        logger.info(
+            "Booking %s was created by user %s through API.",
+            booking.id,
+            self.request.user.id,
+        )
 
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         booking = self.get_object()
 
-        if booking.status == Booking.Status.CANCELLED:
-            raise PermissionDenied("Booking is already cancelled.")
-
-        if booking.status == Booking.Status.PAID:
-            raise PermissionDenied("Paid booking cannot be cancelled without refund logic.")
-
-        if booking.status == Booking.Status.EXPIRED:
-            raise PermissionDenied("Expired booking cannot be cancelled.")
+        logger.info(
+            "User %s requested cancellation for booking %s.",
+            request.user.id,
+            booking.id,
+        )
 
         if booking.status != Booking.Status.PENDING:
+            logger.warning(
+                "Booking %s cancellation failed. Current status: %s.",
+                booking.id,
+                booking.status,
+            )
             raise PermissionDenied("Only pending booking can be cancelled.")
 
         cancel_booking(booking)
+
+        logger.info(
+            "Booking %s was cancelled by user %s.",
+            booking.id,
+            request.user.id,
+        )
 
         serializer = BookingDetailSerializer(booking)
         return Response(serializer.data)

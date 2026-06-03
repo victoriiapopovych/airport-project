@@ -16,6 +16,9 @@ from rest_framework import status
 
 from .services import generate_airplane_seats
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class AirlineViewSet(viewsets.ModelViewSet):
     queryset = Airline.objects.all()
@@ -74,6 +77,12 @@ class AirplaneViewSet(viewsets.ModelViewSet):
     def generate_seats(self, request, pk=None):
         airplane = self.get_object()
 
+        logger.info(
+            "User %s started seat generation for airplane %s.",
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+            airplane.tail_number,
+        )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -91,10 +100,24 @@ class AirplaneViewSet(viewsets.ModelViewSet):
             )
 
         except ValueError as error:
+            logger.warning(
+                "Seat generation failed for airplane %s by user %s: %s",
+                airplane.tail_number,
+                self.request.user.id if self.request.user.is_authenticated else "anonymous",
+                str(error),
+            )
+
             return Response(
                 {"detail": str(error)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        logger.info(
+            "User %s successfully generated %s seats for airplane %s.",
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+            created_count,
+            airplane.tail_number,
+        )
 
         return Response(
             {"detail": f"{created_count} seats were generated successfully."},
