@@ -13,6 +13,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from config.pagination import CustomPagination
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class LoungeViewSet(viewsets.ModelViewSet):
     queryset = Lounge.objects.all()
@@ -29,6 +32,36 @@ class LoungeViewSet(viewsets.ModelViewSet):
             return LoungeListSerializer
 
         return LoungeDetailSerializer
+
+    def perform_create(self, serializer):
+        lounge = serializer.save()
+
+        logger.info(
+            "Lounge %s was created by user %s.",
+            lounge.id,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_update(self, serializer):
+        lounge = serializer.save()
+
+        logger.info(
+            "Lounge %s was updated by user %s.",
+            lounge.id,
+            self.request.user.id if self.request.user.is_authenticated else "anonymous",
+        )
+
+    def perform_destroy(self, instance):
+        lounge_id = instance.id
+        user_id = self.request.user.id if self.request.user.is_authenticated else "anonymous"
+
+        instance.delete()
+
+        logger.warning(
+            "Lounge %s was deleted by user %s.",
+            lounge_id,
+            user_id,
+        )
 
 
 class LoungeAccessViewSet(viewsets.ModelViewSet):
@@ -73,12 +106,64 @@ class LoungeAccessViewSet(viewsets.ModelViewSet):
         return serializer_classes.get(self.action, LoungeAccessDetailSerializer)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        lounge_access = serializer.save(user=self.request.user)
 
+        logger.info(
+            "Lounge access %s was created by user %s for lounge %s. Access type: %s.",
+            lounge_access.id,
+            self.request.user.id,
+            lounge_access.lounge_id,
+            lounge_access.access_type,
+        )
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        old_is_paid = serializer.instance.is_paid
+
+        lounge_access = serializer.save()
+
+        logger.info(
+            "Lounge access %s was updated by user %s. Status: %s -> %s, is_paid: %s -> %s.",
+            lounge_access.id,
+            self.request.user.id,
+            old_status,
+            lounge_access.status,
+            old_is_paid,
+            lounge_access.is_paid,
+        )
+
+
+    def perform_destroy(self, instance):
+        lounge_access_id = instance.id
+        user_id = self.request.user.id if self.request.user.is_authenticated else "anonymous"
+
+        instance.delete()
+
+        logger.warning(
+            "Lounge access %s was deleted by user %s.",
+            lounge_access_id,
+            user_id,
+        )
+
+    
     @action(detail=False, methods=["post"], url_path="create-for-user")
     def create_for_user(self, request):
+        logger.info(
+            "User %s started lounge access creation for another user.",
+            request.user.id,
+        )
+
         serializer = LoungeAccessAdminSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        lounge_access = serializer.save()
+
+        logger.info(
+            "Lounge access %s was created by user %s for user %s. Lounge: %s, access type: %s.",
+            lounge_access.id,
+            request.user.id,
+            lounge_access.user_id,
+            lounge_access.lounge_id,
+            lounge_access.access_type,
+        )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)

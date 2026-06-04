@@ -13,10 +13,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameField(
+        migrations.AddField(
             model_name='flightseat',
-            old_name='reserved_until',
-            new_name='held_until',
+            name='pending_until',
+            field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.RemoveField(
             model_name='flightseat',
@@ -24,12 +24,12 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='flightseat',
-            name='held_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='held_flight_seats', to=settings.AUTH_USER_MODEL),
+            name='pending_by',
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='pending_flight_seats', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='flightseat',
             name='status',
-            field=models.CharField(choices=[('available', 'Available'), ('held', 'Held'), ('sold', 'Sold'), ('blocked', 'Blocked')], default='available', max_length=20),
+            field=models.CharField(choices=[('available', 'Available'), ('pending', 'Pending'), ('sold', 'Sold'), ('blocked', 'Blocked')], default='available', max_length=20),
         ),
     ]

@@ -2,7 +2,6 @@ from rest_framework import serializers
 from django.utils import timezone
 
 from flight.models import FlightSeat
-from .services import release_expired_hold
 
 
 MAX_TICKETS_PER_BOOKING = 10
@@ -44,8 +43,6 @@ def validate_flight_departure(flight):
 
 def validate_available_seats(flight_seats):
     for flight_seat in flight_seats:
-        release_expired_hold(flight_seat)
-
         if flight_seat.status != FlightSeat.Status.AVAILABLE:
             raise serializers.ValidationError(f"Seat {flight_seat} is not available.")
         
