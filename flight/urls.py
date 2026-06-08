@@ -1,13 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import RouteViewSet, FlightViewSet, FlightSeatViewSet
+from .views import RouteViewSet, FlightViewSet
 
 
 router = DefaultRouter()
 
 router.register("routes", RouteViewSet)
 router.register("flights", FlightViewSet)
-router.register("flight-seats", FlightSeatViewSet)
 
 
 urlpatterns = [

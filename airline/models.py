@@ -46,7 +46,12 @@ class SeatClass(models.Model):
     lounge_access = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ("airline", "class_type")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["airline", "class_type"],
+                name="unique_seat_class_per_airline"
+            )
+        ]
 
     def __str__(self):
         return f"{self.airline.name} - {self.get_class_type_display()}"
@@ -56,17 +61,25 @@ class AirplaneSeat(models.Model):
     seat_class = models.ForeignKey(SeatClass, on_delete=models.PROTECT, related_name="airplane_seats")
 
     row_number = models.PositiveIntegerField()
-    seat_letter = models.CharField(max_length=1)
+    seat_letter = models.CharField(max_length=3)
 
     is_window = models.BooleanField(default=False)
     is_aisle = models.BooleanField(default=False)
     is_exit_row = models.BooleanField(default=False)
     has_extra_legroom = models.BooleanField(default=False)
-
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ("airplane", "row_number", "seat_letter")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["airplane", "row_number", "seat_letter"],
+                name="unique_seat_per_airplane"
+            )
+        ]
+
+    @property
+    def seat_number(self):
+        return f"{self.row_number}{self.seat_letter}"
 
     def __str__(self):
-        return f"{self.row_number}{self.seat_letter} - {self.airplane}"
+        return f"{self.airplane.tail_number} - {self.seat_number}"
