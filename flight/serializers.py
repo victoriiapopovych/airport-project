@@ -1,7 +1,11 @@
 from rest_framework import serializers
-from .models import Route, Flight, FlightSeat
 
-from .services import build_seat_number, calculate_ticket_price
+from airline.models import AirplaneSeat
+from .models import Route, Flight
+from .services import (
+    calculate_ticket_price,
+    get_available_seats_count_for_flight,
+)
 
 
 class RouteDetailSerializer(serializers.ModelSerializer):
@@ -26,35 +30,34 @@ class FlightDetailSerializer(serializers.ModelSerializer):
     route_name = serializers.StringRelatedField(source="route", read_only=True)
     airline_name = serializers.CharField(source="airline.name", read_only=True)
     airplane_tail_number = serializers.CharField(source="airplane.tail_number", read_only=True)
-
     available_seats_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Flight
-        fields = ["id", "flight_number", "route", "route_name", "airline", "airline_name", "airplane", "airplane_tail_number", "departure_time", "arrival_time", "status", "terminal_name", "boarding_gate", "base_price", "available_seats_count"]
+        fields = [
+            "id", "flight_number", "route", "route_name", "airline", "airline_name",
+            "airplane", "airplane_tail_number", "departure_time", "arrival_time",
+            "status", "terminal_name", "boarding_gate", "base_price",
+            "available_seats_count",
+        ]
 
     def get_available_seats_count(self, obj):
-        return obj.seats.filter(status=FlightSeat.Status.AVAILABLE).count()
+        return get_available_seats_count_for_flight(obj)
 
     def validate(self, attrs):
         airline = attrs.get("airline", getattr(self.instance, "airline", None))
         airplane = attrs.get("airplane", getattr(self.instance, "airplane", None))
+        departure_time = attrs.get("departure_time", getattr(self.instance, "departure_time", None))
+        arrival_time = attrs.get("arrival_time", getattr(self.instance, "arrival_time", None))
 
         if airline and airplane and airplane.airline != airline:
-            raise serializers.ValidationError(
-                {"airplane": "Selected airplane must belong to the selected airline."}
-            )
+            raise serializers.ValidationError({"airplane": "Selected airplane must belong to the selected airline."})
 
         if airplane and not airplane.seats.exists():
-            raise serializers.ValidationError(
-                {"airplane": "Seats must be generated for this airplane before creating a flight."}
-            )
+            raise serializers.ValidationError({"airplane": "Seats must be generated for this airplane before creating a flight."})
 
-        if self.instance and "airplane" in attrs and self.instance.seats.exists():
-            if attrs["airplane"] != self.instance.airplane:
-                raise serializers.ValidationError(
-                    {"airplane": "You cannot change airplane after flight seats were generated."}
-                )
+        if departure_time and arrival_time and arrival_time <= departure_time:
+            raise serializers.ValidationError({"arrival_time": "Arrival time must be later than departure time."})
 
         return attrs
 
@@ -66,41 +69,30 @@ class FlightListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Flight
-        fields = ["id", "flight_number", "route_name", "airline_name", "departure_time", "arrival_time", "status", "base_price", "available_seats_count"]
+        fields = [
+            "id", "flight_number", "route_name", "airline_name",
+            "departure_time", "arrival_time", "status", "base_price",
+            "available_seats_count",
+        ]
 
     def get_available_seats_count(self, obj):
-        return obj.seats.filter(status=FlightSeat.Status.AVAILABLE).count()
+        return get_available_seats_count_for_flight(obj)
 
 
-class FlightSeatListSerializer(serializers.ModelSerializer):
-    seat_number = serializers.SerializerMethodField()
-    seat_class = serializers.CharField(source="airplane_seat.seat_class.get_class_type_display", read_only=True)
+class AvailableSeatSerializer(serializers.ModelSerializer):
+    seat_number = serializers.CharField(read_only=True)
+    seat_class = serializers.CharField(source="seat_class.get_class_type_display", read_only=True)
+    class_type = serializers.CharField(source="seat_class.class_type", read_only=True)
     ticket_price = serializers.SerializerMethodField()
 
     class Meta:
-        model = FlightSeat
-        fields = ["id", "seat_number", "seat_class", "ticket_price", "status"]
-
-    def get_seat_number(self, obj):
-        return build_seat_number(obj)
-
-    def get_ticket_price(self, obj):
-        return calculate_ticket_price(obj)
-
-
-class FlightSeatDetailSerializer(serializers.ModelSerializer):
-    seat_number = serializers.SerializerMethodField()
-    seat_class = serializers.CharField(source="airplane_seat.seat_class.get_class_type_display", read_only=True)
-    airplane_tail_number = serializers.CharField(source="airplane_seat.airplane.tail_number", read_only=True)
-    ticket_price = serializers.SerializerMethodField()
-
-    class Meta:
-        model = FlightSeat
-        fields = ["id", "flight", "airplane_seat", "airplane_tail_number", "seat_number", "seat_class", "ticket_price", "status", "pending_until"]
-
-    def get_seat_number(self, obj):
-        return build_seat_number(obj)
+        model = AirplaneSeat
+        fields = [
+            "id", "seat_number", "seat_class", "class_type", "ticket_price",
+            "row_number", "seat_letter", "is_window", "is_aisle",
+            "is_exit_row", "has_extra_legroom",
+        ]
 
     def get_ticket_price(self, obj):
-        return calculate_ticket_price(obj)
-    
+        flight = self.context["flight"]
+        return calculate_ticket_price(flight, obj)
