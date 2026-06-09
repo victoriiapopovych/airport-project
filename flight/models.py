@@ -1,7 +1,6 @@
 from django.db import models
 from location.models import Airport
-from airline.models import Airline, Airplane, AirplaneSeat
-from django.conf import settings
+from airline.models import Airline, Airplane
 
 # Create your models here.
 class Route(models.Model):

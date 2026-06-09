@@ -6,8 +6,10 @@ from rest_framework import serializers
 
 from .models import Booking, Ticket
 
-
 logger = logging.getLogger(__name__)
+
+from datetime import timedelta
+from django.utils import timezone
 
 
 def calculate_ticket_price(flight, airplane_seat):
@@ -46,7 +48,7 @@ def create_booking(user, tickets_data):
     booking = Booking.objects.create(
         user=user,
         status=Booking.Status.PENDING,
-        total_price=Decimal("0.00"),
+        total_price=Decimal("0.00")
     )
 
     total_price = Decimal("0.00")

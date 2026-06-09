@@ -141,6 +141,12 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
 
         if not attrs["lounge"].is_active:
             raise serializers.ValidationError("This lounge is currently inactive.")
+        
+        if access_type != LoungeAccess.AccessType.PAID_ACCESS and not ticket:
+            raise serializers.ValidationError("This access type requires a ticket.")
+        
+        if access_type == LoungeAccess.AccessType.PAID_ACCESS and ticket:
+            raise serializers.ValidationError("Paid access should be created without ticket.")
 
         if ticket and ticket.booking.user != request.user:
             raise serializers.ValidationError("You can use only your own ticket.")
@@ -152,7 +158,7 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Lounge access for this ticket already exists.")
         
         if ticket:
-            departure_airport = ticket.flight_seat.flight.route.departure_airport
+            departure_airport = ticket.flight.route.departure_airport
 
             if attrs["lounge"].airport != departure_airport:
                 raise serializers.ValidationError("Lounge must be located in the departure airport of the ticket flight.")
@@ -161,7 +167,7 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
             if not ticket:
                 raise serializers.ValidationError("Business class access requires a ticket.")
 
-            seat_class = ticket.flight_seat.airplane_seat.seat_class
+            seat_class = ticket.airplane_seat.seat_class
 
             if not seat_class.lounge_access:
                 raise serializers.ValidationError("This ticket class does not include lounge access.")
