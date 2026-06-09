@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 
 from .serializers import CreateCheckoutSessionSerializer
-from .services import create_checkout_session
 
 import stripe
 
@@ -18,7 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-from .services import create_checkout_session, handle_successful_checkout
+from .services import create_checkout_session, handle_successful_checkout, handle_expired_checkout
 
 
 class CreateCheckoutSessionView(APIView):
@@ -84,6 +83,16 @@ class StripeWebhookView(APIView):
 
             logger.info(
                 "Stripe checkout completed. Payment %s marked as paid.",
+                payment.id,
+            )
+
+        if event["type"] == "checkout.session.expired":
+            session = event["data"]["object"]
+
+            payment = handle_expired_checkout(session)
+
+            logger.info(
+                "Stripe checkout expired. Payment %s marked as expired.",
                 payment.id,
             )
 

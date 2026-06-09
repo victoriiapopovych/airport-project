@@ -7,6 +7,8 @@ from .models import Booking, Ticket
 from .services import create_booking
 from .validators import validate_available_seats, validate_duplicate_seats, validate_flight_departure, validate_flight_status, validate_passenger_name, validate_same_flight, validate_seats_belong_to_flight_airplane, validate_ticket_limit
 
+from payment.services import create_booking_checkout_session
+
 
 class TicketListSerializer(serializers.ModelSerializer):
     flight_number = serializers.CharField(source="flight.flight_number", read_only=True)
@@ -93,4 +95,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         tickets_data = validated_data.pop("tickets")
         user = self.context["request"].user
 
-        return create_booking(user, tickets_data)
+        booking = create_booking(user, tickets_data)
+        create_booking_checkout_session(booking)
+
+        return booking

@@ -5,6 +5,8 @@ from .services import apply_payment_logic, get_ticket_flight_number
 
 from .validators import validate_access_dates, validate_lounge_working_hours, validate_paid_access_price, validate_lounge_capacity
 
+from payment.services import create_lounge_checkout_session
+
 
 class LoungeDetailSerializer(serializers.ModelSerializer):
     airport_name = serializers.CharField(source="airport.name", read_only=True)
@@ -174,6 +176,10 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
         lounge_access = LoungeAccess(**validated_data)
         apply_payment_logic(lounge_access)
         lounge_access.save()
+
+        if lounge_access.access_type == LoungeAccess.AccessType.PAID_ACCESS:
+            create_lounge_checkout_session(lounge_access)
+
         return lounge_access
 
     

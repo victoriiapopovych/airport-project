@@ -24,6 +24,7 @@ class Payment(models.Model):
     lounge_access = models.ForeignKey(LoungeAccess, on_delete=models.SET_NULL, null=True, blank=True, related_name="payments")
 
     stripe_session_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    checkout_url = models.URLField(max_length=500, null=True, blank=True)
 
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default="USD")
