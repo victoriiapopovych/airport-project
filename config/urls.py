@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/flight/", include("flight.urls")),
     path("api/ticket/", include("ticket.urls")),
     path("api/lounge/", include("lounge.urls")),
+    path("api/payment/", include("payment.urls")),
 
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

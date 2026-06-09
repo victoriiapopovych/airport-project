@@ -19,8 +19,8 @@ from .services import cancel_booking
 import logging
 logger = logging.getLogger(__name__)
 
-
-class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,  viewsets.GenericViewSet):
+ 
+class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = Booking.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -31,11 +31,13 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        if CanViewAllBookings().has_permission(self.request, self):
-            return Booking.objects.all()
+        queryset = Booking.objects.prefetch_related("tickets", "tickets__flight", "tickets__airplane_seat", "tickets__airplane_seat__seat_class")
 
-        return Booking.objects.filter(user=self.request.user)
-    
+        if CanViewAllBookings().has_permission(self.request, self):
+            return queryset
+
+        return queryset.filter(user=self.request.user)
+
     def get_permissions(self):
         if self.action == "create":
             return [CanCreateBooking()]
@@ -53,65 +55,46 @@ class BookingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.Cr
             return BookingCreateSerializer
 
         return BookingDetailSerializer
-    
+
     def perform_create(self, serializer):
         booking = serializer.save()
 
-        logger.info(
-            "Booking %s was created by user %s through API.",
-            booking.id,
-            self.request.user.id,
-        )
+        logger.info("Booking %s was created by user %s through API.", booking.id, self.request.user.id)
 
     @extend_schema(request=None)
     @action(detail=True, methods=["post"])
     def cancel(self, request, pk=None):
         booking = self.get_object()
 
-        logger.info(
-            "User %s requested cancellation for booking %s.",
-            request.user.id,
-            booking.id,
-        )
-
         if booking.status != Booking.Status.PENDING:
-            logger.warning(
-                "Booking %s cancellation failed. Current status: %s.",
-                booking.id,
-                booking.status,
-            )
             raise PermissionDenied("Only pending booking can be cancelled.")
 
         cancel_booking(booking)
 
-        logger.info(
-            "Booking %s was cancelled by user %s.",
-            booking.id,
-            request.user.id,
-        )
-
         serializer = BookingDetailSerializer(booking)
         return Response(serializer.data)
 
-  
+
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ticket.objects.all()
     permission_classes = [IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ["status", "booking", "flight_seat", "flight_seat__flight"]
-    search_fields = ["passenger_first_name", "passenger_last_name", "flight_seat__flight__flight_number", "flight_seat__airplane_seat__seat_letter"]
+    filterset_fields = ["status", "booking", "flight", "airplane_seat"]
+    search_fields = ["passenger_first_name", "passenger_last_name", "flight__flight_number", "airplane_seat__seat_letter"]
 
     pagination_class = CustomPagination
 
     def get_queryset(self):
-        if CanViewAllBookings().has_permission(self.request, self):
-            return Ticket.objects.all()
+        queryset = Ticket.objects.select_related("booking", "booking__user", "flight", "airplane_seat", "airplane_seat__seat_class")
 
-        return Ticket.objects.filter(booking__user=self.request.user)
+        if CanViewAllBookings().has_permission(self.request, self):
+            return queryset
+
+        return queryset.filter(booking__user=self.request.user)
 
     def get_serializer_class(self):
         if self.action == "list":
             return TicketListSerializer
-
+        
         return TicketDetailSerializer

@@ -1,13 +1,29 @@
-
-def build_seat_number(flight_seat):
-    return (
-        f"{flight_seat.airplane_seat.row_number}"
-        f"{flight_seat.airplane_seat.seat_letter}"
-    )
+from ticket.models import Ticket
 
 
-def calculate_ticket_price(flight_seat):
-    base_price = flight_seat.flight.base_price
-    extra_price = flight_seat.airplane_seat.seat_class.extra_price
+def calculate_ticket_price(flight, airplane_seat):
+    return flight.base_price + airplane_seat.seat_class.extra_price
 
-    return base_price + extra_price
+
+def get_taken_seat_ids_for_flight(flight):
+    return Ticket.objects.filter(
+        flight=flight,
+        status__in=[
+            Ticket.Status.PENDING,
+            Ticket.Status.PAID,
+        ],
+    ).values_list("airplane_seat_id", flat=True)
+
+
+def get_available_seats_for_flight(flight):
+    taken_seat_ids = get_taken_seat_ids_for_flight(flight)
+
+    return flight.airplane.seats.filter(
+        is_active=True,
+    ).exclude(
+        id__in=taken_seat_ids,
+    ).select_related("seat_class")
+
+
+def get_available_seats_count_for_flight(flight):
+    return get_available_seats_for_flight(flight).count()

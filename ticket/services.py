@@ -1,58 +1,19 @@
 import logging
+from decimal import Decimal
 
-from django.utils import timezone
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from .models import Booking, Ticket
-from flight.models import FlightSeat
-
 
 logger = logging.getLogger(__name__)
 
+from datetime import timedelta
+from django.utils import timezone
 
-def expire_booking(booking):
-    if booking.status != Booking.Status.PENDING:
-        logger.debug(
-            "Booking %s expiration skipped because status is %s.",
-            booking.id,
-            booking.status,
-        )
-        return
 
-    expired_seats = booking.tickets.filter(
-        flight_seat__status=FlightSeat.Status.PENDING,
-        flight_seat__pending_until__lt=timezone.now(),
-    )
-
-    if not expired_seats.exists():
-        logger.debug(
-            "Booking %s expiration skipped because there are no expired seats.",
-            booking.id,
-        )
-        return
-
-    booking.status = Booking.Status.EXPIRED
-    booking.save()
-
-    cancelled_tickets_count = 0
-
-    for ticket in booking.tickets.all():
-        ticket.status = Ticket.Status.CANCELLED
-        ticket.save()
-
-        flight_seat = ticket.flight_seat
-        flight_seat.status = FlightSeat.Status.AVAILABLE
-        flight_seat.pending_until = None
-        flight_seat.pending_by = None
-        flight_seat.save()
-
-        cancelled_tickets_count += 1
-
-    logger.info(
-        "Booking %s expired. Cancelled %s tickets and released related flight seats.",
-        booking.id,
-        cancelled_tickets_count,
-    )
+def calculate_ticket_price(flight, airplane_seat):
+    return flight.base_price + airplane_seat.seat_class.extra_price
 
 
 def cancel_booking(booking):
@@ -63,33 +24,20 @@ def cancel_booking(booking):
     )
 
     booking.status = Booking.Status.CANCELLED
-    booking.save()
+    booking.save(update_fields=["status"])
 
-    cancelled_tickets_count = 0
-    released_seats_count = 0
-
-    for ticket in booking.tickets.all():
-        ticket.status = Ticket.Status.CANCELLED
-        ticket.save()
-        cancelled_tickets_count += 1
-
-        flight_seat = ticket.flight_seat
-
-        if flight_seat.status == FlightSeat.Status.PENDING:
-            flight_seat.status = FlightSeat.Status.AVAILABLE
-            flight_seat.pending_until = None
-            flight_seat.pending_by = None
-            flight_seat.save()
-            released_seats_count += 1
+    cancelled_tickets_count = booking.tickets.exclude(
+        status=Ticket.Status.CANCELLED
+    ).update(status=Ticket.Status.CANCELLED)
 
     logger.info(
-        "Booking %s cancelled. Cancelled %s tickets and released %s flight seats.",
+        "Booking %s cancelled. Cancelled %s tickets.",
         booking.id,
         cancelled_tickets_count,
-        released_seats_count,
     )
 
 
+@transaction.atomic
 def create_booking(user, tickets_data):
     logger.info(
         "Creating booking for user %s with %s tickets.",
@@ -100,53 +48,38 @@ def create_booking(user, tickets_data):
     booking = Booking.objects.create(
         user=user,
         status=Booking.Status.PENDING,
+        total_price=Decimal("0.00")
     )
 
-    total_price = 0
+    total_price = Decimal("0.00")
+    tickets_to_create = []
 
     for item in tickets_data:
-        flight_seat = FlightSeat.objects.select_for_update().get(
-            id=item["flight_seat"].id
-        )
+        flight = item["flight"]
+        airplane_seat = item["airplane_seat"]
 
-        if flight_seat.status != FlightSeat.Status.AVAILABLE:
-            logger.warning(
-                "Booking %s creation failed for user %s: flight seat %s is not available.",
-                booking.id,
-                user.id,
-                flight_seat.id,
-            )
-            raise serializers.ValidationError(f"Seat {flight_seat} is not available.")
-
-        seat_class = flight_seat.airplane_seat.seat_class
-        price = flight_seat.flight.base_price + seat_class.extra_price
-
-        ticket = Ticket.objects.create(
-            booking=booking,
-            flight_seat=flight_seat,
-            passenger_first_name=item["passenger_first_name"],
-            passenger_last_name=item["passenger_last_name"],
-            price=price,
-            status=Ticket.Status.PENDING,
-        )
-
-        flight_seat.status = FlightSeat.Status.PENDING
-        flight_seat.pending_until = timezone.now() + timezone.timedelta(minutes=15)
-        flight_seat.pending_by = user
-        flight_seat.save()
-
+        price = calculate_ticket_price(flight, airplane_seat)
         total_price += price
 
-        logger.info(
-            "Ticket %s created for booking %s. Flight seat %s set to pending until %s.",
-            ticket.id,
-            booking.id,
-            flight_seat.id,
-            flight_seat.pending_until,
+        tickets_to_create.append(
+            Ticket(
+                booking=booking,
+                flight=flight,
+                airplane_seat=airplane_seat,
+                passenger_first_name=item["passenger_first_name"],
+                passenger_last_name=item["passenger_last_name"],
+                price=price,
+                status=Ticket.Status.PENDING,
+            )
         )
 
+    try:
+        Ticket.objects.bulk_create(tickets_to_create)
+    except IntegrityError:
+        raise serializers.ValidationError("One of the selected seats is already booked.")
+
     booking.total_price = total_price
-    booking.save()
+    booking.save(update_fields=["total_price"])
 
     logger.info(
         "Booking %s created successfully for user %s. Total price: %s.",

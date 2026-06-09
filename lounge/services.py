@@ -54,6 +54,6 @@ def apply_payment_logic(lounge_access, old_is_paid=False):
 
 def get_ticket_flight_number(lounge_access):
     if lounge_access.ticket:
-        return lounge_access.ticket.flight_seat.flight.flight_number
+        return lounge_access.ticket.flight.flight_number
 
     return None

@@ -10,6 +10,6 @@ class BookingAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ("booking", "flight_seat", "passenger_first_name", "passenger_last_name", "price", "status")
-    list_filter = ("status", "flight_seat")
+    list_display = ("booking", "flight", "passenger_first_name", "passenger_last_name", "price", "status")
+    list_filter = ("status", "flight")
     search_fields = ("passenger_first_name", "passenger_last_name", "booking__user__email")

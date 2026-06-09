@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "flight.apps.FlightsConfig",
     "ticket",
     "lounge",
+    "payment",
 
     "django_filters",
 ]
@@ -204,3 +205,12 @@ LOGGING = {
         },
     },
 }
+
+
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET") 
+STRIPE_CURRENCY = os.getenv("STRIPE_CURRENCY", "usd")
+
+STRIPE_SUCCESS_URL = os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/api/docs/")
+STRIPE_CANCEL_URL = os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/api/docs/")
