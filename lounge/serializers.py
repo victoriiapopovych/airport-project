@@ -7,6 +7,8 @@ from .validators import validate_access_dates, validate_lounge_working_hours, va
 
 from payment.services import create_lounge_checkout_session
 
+from notifications.services import send_lounge_approved_email, send_lounge_rejected_email
+
 
 class LoungeDetailSerializer(serializers.ModelSerializer):
     airport_name = serializers.CharField(source="airport.name", read_only=True)
@@ -83,7 +85,18 @@ class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
+        old_status = instance.status
+
+        instance = super().update(instance, validated_data)
+
+        if old_status != instance.status:
+            if instance.status == LoungeAccess.Status.APPROVED:
+                send_lounge_approved_email(instance)
+
+            if instance.status == LoungeAccess.Status.REJECTED:
+                send_lounge_rejected_email(instance)
+
+        return instance
 
 
 class LoungeAccessAdminSerializer(serializers.ModelSerializer):

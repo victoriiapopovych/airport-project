@@ -13,6 +13,7 @@ from .models import Payment
 from datetime import timedelta
 from django.utils import timezone
 
+from notifications.services import send_booking_paid_email, send_booking_expired_email, send_lounge_paid_email, send_lounge_expired_email
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -127,6 +128,8 @@ def handle_successful_checkout(session):
             status=Ticket.Status.PAID
         )
 
+        send_booking_paid_email(booking)
+
     if payment.payment_type == Payment.TypeChoices.LOUNGE and payment.lounge_access:
         lounge_access = payment.lounge_access
         old_is_paid = lounge_access.is_paid
@@ -141,6 +144,8 @@ def handle_successful_checkout(session):
                 "price",
             ]
         )
+
+        send_lounge_paid_email(lounge_access)
 
     return payment
 
@@ -235,10 +240,14 @@ def handle_expired_checkout(session):
             status=Ticket.Status.CANCELLED
         )
 
+        send_booking_expired_email(booking)
+
     if payment.payment_type == Payment.TypeChoices.LOUNGE and payment.lounge_access:
         lounge_access = payment.lounge_access
         lounge_access.status = LoungeAccess.Status.CANCELLED
         lounge_access.save(update_fields=["status"])
+
+        send_lounge_expired_email(lounge_access)
 
     return payment
 
