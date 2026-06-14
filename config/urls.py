@@ -20,6 +20,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from chat.views import chat_test_page
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -32,6 +34,8 @@ urlpatterns = [
     path("api/ticket/", include("ticket.urls")),
     path("api/lounge/", include("lounge.urls")),
     path("api/payment/", include("payment.urls")),
+    path("api/chat/", include("chat.urls")),
+    path("assistant/", chat_test_page, name="assistant"),
 
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

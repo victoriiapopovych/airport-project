@@ -55,6 +55,9 @@ INSTALLED_APPS = [
     "notifications",
 
     "django_filters",
+
+    "channels",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -231,3 +234,7 @@ DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL",
     "Airport Management System <noreply@airport.com>",
 )
+
+ASGI_APPLICATION = "config.asgi.application"
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
