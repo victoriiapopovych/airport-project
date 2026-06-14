@@ -32,17 +32,16 @@ def apply_payment_logic(lounge_access, old_is_paid=False):
             lounge_access.paid_at = None
 
             logger.info(
-                "Paid lounge access is waiting for payment. Lounge: %s, user: %s, price: %s.",
+                "Free lounge access request created. Waiting for approval. Access type: %s, lounge: %s, user: %s.",
+                lounge_access.access_type,
                 lounge_access.lounge_id,
                 lounge_access.user_id,
-                lounge_access.price,
             )
 
     else:
         lounge_access.price = 0
         lounge_access.is_paid = True
         lounge_access.paid_at = None
-        lounge_access.status = LoungeAccess.Status.APPROVED
 
         logger.info(
             "Free lounge access approved automatically. Access type: %s, lounge: %s, user: %s.",

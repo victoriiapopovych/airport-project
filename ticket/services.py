@@ -8,8 +8,7 @@ from .models import Booking, Ticket
 
 logger = logging.getLogger(__name__)
 
-from datetime import timedelta
-from django.utils import timezone
+from payment.services import cancel_pending_payment_for_booking
 
 
 def calculate_ticket_price(flight, airplane_seat):
@@ -29,6 +28,8 @@ def cancel_booking(booking):
     cancelled_tickets_count = booking.tickets.exclude(
         status=Ticket.Status.CANCELLED
     ).update(status=Ticket.Status.CANCELLED)
+
+    cancel_pending_payment_for_booking(booking)
 
     logger.info(
         "Booking %s cancelled. Cancelled %s tickets.",

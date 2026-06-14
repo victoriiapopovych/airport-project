@@ -5,6 +5,10 @@ from .services import apply_payment_logic, get_ticket_flight_number
 
 from .validators import validate_access_dates, validate_lounge_working_hours, validate_paid_access_price, validate_lounge_capacity
 
+from payment.services import create_lounge_checkout_session
+
+from notifications.services import send_lounge_approved_email, send_lounge_rejected_email
+
 
 class LoungeDetailSerializer(serializers.ModelSerializer):
     airport_name = serializers.CharField(source="airport.name", read_only=True)
@@ -51,7 +55,7 @@ class LoungeAccessListSerializer(serializers.ModelSerializer):
 class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoungeAccess
-        fields = ["status", "access_type", "is_paid", "paid_at", "valid_from", "valid_until", "is_used"]
+        fields = ["status", "valid_from", "valid_until", "is_used"]
 
     def validate(self, attrs):
         valid_from = attrs.get("valid_from", self.instance.valid_from)
@@ -81,10 +85,17 @@ class LoungeAccessOperatorUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def update(self, instance, validated_data):
-        old_is_paid = instance.is_paid
+        old_status = instance.status
+
         instance = super().update(instance, validated_data)
-        apply_payment_logic(instance, old_is_paid)
-        instance.save()
+
+        if old_status != instance.status:
+            if instance.status == LoungeAccess.Status.APPROVED:
+                send_lounge_approved_email(instance)
+
+            if instance.status == LoungeAccess.Status.REJECTED:
+                send_lounge_rejected_email(instance)
+
         return instance
 
 
@@ -178,6 +189,10 @@ class LoungeAccessCreateSerializer(serializers.ModelSerializer):
         lounge_access = LoungeAccess(**validated_data)
         apply_payment_logic(lounge_access)
         lounge_access.save()
+
+        if lounge_access.access_type == LoungeAccess.AccessType.PAID_ACCESS:
+            create_lounge_checkout_session(lounge_access)
+
         return lounge_access
 
     
