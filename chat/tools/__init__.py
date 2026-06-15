@@ -6,6 +6,11 @@ from .seat_tools import get_available_seats, get_seat_details
 from .booking_tools import get_user_bookings, get_booking_details
 from .ticket_tools import get_user_tickets, get_ticket_details
 
+from .lounge_tools import get_available_lounges, get_lounge_details, get_user_lounge_accesses, get_lounge_access_details
+
+from .airport_tools import get_airports, get_airport_details
+from .airline_tools import get_airlines, get_airline_details
+
 
 available_flights_tool = types.FunctionDeclaration(
     name="get_available_flights",
@@ -197,17 +202,199 @@ ticket_details_tool = types.FunctionDeclaration(
 )
 
 
+available_lounges_tool = types.FunctionDeclaration(
+    name="get_available_lounges",
+    description=(
+        "Search active airport lounges in the system. "
+        "Use this tool when the user asks about available lounges, airport lounges, "
+        "lounges in a specific airport, or lounge prices. "
+        "The airport_name filter is optional."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "airport_name": {
+                "type": "string",
+                "description": "Airport name or part of the airport name.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of lounges to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+lounge_details_tool = types.FunctionDeclaration(
+    name="get_lounge_details",
+    description="Get detailed information about a specific lounge by lounge ID.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "lounge_id": {
+                "type": "integer",
+                "description": "Lounge ID.",
+            },
+        },
+        "required": ["lounge_id"],
+    },
+)
+
+
+user_lounge_accesses_tool = types.FunctionDeclaration(
+    name="get_user_lounge_accesses",
+    description=(
+        "Get lounge accesses of the authenticated user. "
+        "Use this tool when the user asks about their lounge access, "
+        "approved lounge accesses, pending lounge accesses, paid lounge access, "
+        "or whether they have access to any lounge."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "description": "Lounge access status: pending, approved, rejected, cancelled.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of lounge accesses to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+lounge_access_details_tool = types.FunctionDeclaration(
+    name="get_lounge_access_details",
+    description="Get detailed information about a specific lounge access of the authenticated user.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "lounge_access_id": {
+                "type": "integer",
+                "description": "Lounge access ID.",
+            },
+        },
+        "required": ["lounge_access_id"],
+    },
+)
+
+
+airports_tool = types.FunctionDeclaration(
+    name="get_airports",
+    description=(
+        "Get airports from the airport system. "
+        "Can filter by city name or country name."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "city_name": {
+                "type": "string",
+                "description": "City name.",
+            },
+            "country_name": {
+                "type": "string",
+                "description": "Country name.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of airports to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+airport_details_tool = types.FunctionDeclaration(
+    name="get_airport_details",
+    description="Get details about a specific airport by airport ID.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "airport_id": {
+                "type": "integer",
+                "description": "Airport ID.",
+            },
+        },
+        "required": ["airport_id"],
+    },
+)
+
+
+airlines_tool = types.FunctionDeclaration(
+    name="get_airlines",
+    description=(
+        "Get active airlines from the airport system. "
+        "Can filter by country name."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "country_name": {
+                "type": "string",
+                "description": "Country name.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of airlines to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+airline_details_tool = types.FunctionDeclaration(
+    name="get_airline_details",
+    description="Get details about a specific airline by ID or name.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "airline_id": {
+                "type": "integer",
+                "description": "Airline ID.",
+            },
+            "airline_name": {
+                "type": "string",
+                "description": "Airline name.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
 ALL_TOOLS = [
     types.Tool(
         function_declarations=[
             available_flights_tool,
             flight_details_tool,
+
             available_seats_tool,
             seat_details_tool,
+
             user_bookings_tool,
             booking_details_tool,
+
             user_tickets_tool,
             ticket_details_tool,
+
+            available_lounges_tool,
+            lounge_details_tool,
+            user_lounge_accesses_tool,
+            lounge_access_details_tool,
+
+            airports_tool,
+            airport_details_tool,
+
+            airlines_tool,
+            airline_details_tool,
         ]
     )
 ]
@@ -268,6 +455,54 @@ def execute_tool(name: str, args: dict, user_id=None):
         return get_ticket_details(
             user_id=user_id,
             ticket_id=args.get("ticket_id"),
+        )
+    
+    if name == "get_available_lounges":
+        return get_available_lounges(
+            airport_name=args.get("airport_name"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_lounge_details":
+        return get_lounge_details(
+            lounge_id=args.get("lounge_id"),
+        )
+
+    if name == "get_user_lounge_accesses":
+        return get_user_lounge_accesses(
+            user_id=user_id,
+            status=args.get("status"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_lounge_access_details":
+        return get_lounge_access_details(
+            user_id=user_id,
+            lounge_access_id=args.get("lounge_access_id"),
+        )
+    
+    if name == "get_airports":
+        return get_airports(
+            city_name=args.get("city_name"),
+            country_name=args.get("country_name"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_airport_details":
+        return get_airport_details(
+            airport_id=args.get("airport_id"),
+        )
+
+    if name == "get_airlines":
+        return get_airlines(
+            country_name=args.get("country_name"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_airline_details":
+        return get_airline_details(
+            airline_id=args.get("airline_id"),
+            airline_name=args.get("airline_name"),
         )
 
     raise ValueError(f"Unknown tool: {name}")

@@ -5,13 +5,13 @@ from google import genai
 from google.genai import types
 
 from chat.tools import ALL_TOOLS, execute_tool
-from google.genai.errors import ClientError
+from google.genai.errors import ClientError, ServerError
 
 logger = logging.getLogger(__name__)
 
 client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-2.5-flash-lite"
 TEMPERATURE = 0.3
 
 
@@ -40,9 +40,12 @@ You may answer without tools when the user asks general questions about how the 
 - How can I choose a seat?
 
 Data rules:
-- Use tools whenever the user asks about real system data.
-- Do not invent flights, seats, bookings, tickets, prices, airports, or times.
+- Never show bookings, tickets, or lounge accesses belonging to another user.
+- ALWAYS use tools when the user asks about real system data.
+- Never generate or guess system data from your own knowledge.
+- Do not invent flights, seats, bookings, tickets, lounge accesses, prices, airports, airlines, or times.
 - If a tool returns an empty list, clearly say that no matching records were found.
+- If a suitable tool exists for the request, use the tool instead of asking follow-up questions.
 
 Flight search rules:
 - For any flight search request, call get_available_flights.
@@ -53,12 +56,47 @@ Flight search rules:
 - If the user gives only an arrival city or airport, search by that.
 - Do not ask for missing filters if a general search can be performed.
 
+Airport rules:
+- For airport list or airport search requests, call get_airports.
+- For requests to show all airports, call get_airports without filters.
+- For questions about a specific airport, call get_airport_details.
+
+Airline rules:
+- For airline list or airline search requests, call get_airlines.
+- For requests to show all airlines, call get_airlines without filters.
+- For questions about a specific airline, call get_airline_details.
+
 Seat rules:
 - For seat availability questions, call get_available_seats.
 - For questions about a specific seat, call get_seat_details.
 
+Booking rules:
+- For any request asking to show, list, display, find, or retrieve the user's bookings, ALWAYS call get_user_bookings.
+- If the user does not provide a filter, show all bookings.
+- Do not ask which bookings the user wants unless they explicitly request filtering.
+- For requests about a specific booking, call get_booking_details.
+
+Ticket rules:
+- For any request asking to show, list, display, find, or retrieve the user's tickets, ALWAYS call get_user_tickets.
+- If the user does not provide a filter, show all tickets.
+- Do not ask which tickets the user wants unless they explicitly request filtering.
+- For requests about a specific ticket, call get_ticket_details.
+
+Lounge rules:
+- For lounge search requests, call get_available_lounges.
+- For requests about a specific lounge, call get_lounge_details.
+- For any request asking to show the user's lounge accesses, ALWAYS call get_user_lounge_accesses.
+- If the user does not provide a filter, show all lounge accesses.
+- Do not ask follow-up questions when all lounge accesses can be shown directly.
+- For requests about a specific lounge access, call get_lounge_access_details.
+
 Response style:
-- Be friendly, clear, and natural.
+- Be friendly and conversational.
+- Prefer showing tool results over explaining them.
+- Present information in a structured format.
+- When displaying lists, clearly separate records with empty lines.
+- When displaying detailed information, show all important fields returned by the tool.
+- Do not summarize tool results if important information would be lost.
 - Do not sound robotic.
 - Use short paragraphs.
 - Format information neatly with line breaks.
@@ -108,7 +146,7 @@ def generate_response(contents, user_id=None):
 
             tool_result = execute_tool(
                 function_call.name,
-                dict(function_call.args or {}),
+                tool_args,
                 user_id=user_id,
             )
 
@@ -149,6 +187,20 @@ def generate_response(contents, user_id=None):
 
         return response.text or "I could not generate a response."
 
+    except ServerError as e:
+        logger.exception("Gemini API server error")
+
+        if "503" in str(e) or "UNAVAILABLE" in str(e):
+            return (
+                "Gemini API is currently overloaded. "
+                "Please try again later."
+            )
+
+        return (
+            "Gemini API server error. "
+            "Please try again later."
+        )
+
     except ClientError as e:
         logger.exception("Gemini API client error")
 
@@ -170,6 +222,7 @@ def generate_response(contents, user_id=None):
             "Internal AI assistant error. "
             "Please try again later."
         )
+
 
 def _get_function_call(response):
     if not response.candidates:
