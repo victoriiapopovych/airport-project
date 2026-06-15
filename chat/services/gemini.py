@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-2.5-flash"
 TEMPERATURE = 0.3
 
 
@@ -83,7 +83,7 @@ Answer in the same language as the user.
 """
 
 
-def generate_response(contents):
+def generate_response(contents, user_id=None):
     try:
         response = client.models.generate_content(
             model=MODEL,
@@ -98,9 +98,24 @@ def generate_response(contents):
         function_call = _get_function_call(response)
 
         if function_call:
+            tool_args = dict(function_call.args or {})
+
+            logger.info(
+                "Gemini requested tool: %s with args: %s",
+                function_call.name,
+                tool_args,
+            )
+
             tool_result = execute_tool(
                 function_call.name,
                 dict(function_call.args or {}),
+                user_id=user_id,
+            )
+
+            logger.info(
+                "Tool result for %s: %s",
+                function_call.name,
+                tool_result,
             )
 
             updated_contents = list(contents)

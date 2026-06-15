@@ -91,7 +91,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conversation_id,
         )
 
-        response_text = await database_sync_to_async(generate_response)(contents)
+        response_text = await database_sync_to_async(generate_response)(
+            contents,
+            self.user.id,
+        )
 
         await save_chat_response_async(
             conversation,

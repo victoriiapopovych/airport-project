@@ -3,6 +3,9 @@ from google.genai import types
 from .flight_tools import get_available_flights, get_flight_details
 from .seat_tools import get_available_seats, get_seat_details
 
+from .booking_tools import get_user_bookings, get_booking_details
+from .ticket_tools import get_user_tickets, get_ticket_details
+
 
 available_flights_tool = types.FunctionDeclaration(
     name="get_available_flights",
@@ -118,6 +121,81 @@ seat_details_tool = types.FunctionDeclaration(
     },
 )
 
+user_bookings_tool = types.FunctionDeclaration(
+    name="get_user_bookings",
+    description="Get bookings of the authenticated user. Can filter by booking status.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "description": "Booking status: pending, paid, cancelled, expired.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of bookings to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+booking_details_tool = types.FunctionDeclaration(
+    name="get_booking_details",
+    description="Get details of a specific booking of the authenticated user.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "booking_id": {
+                "type": "integer",
+                "description": "Booking ID.",
+            },
+        },
+        "required": ["booking_id"],
+    },
+)
+
+
+user_tickets_tool = types.FunctionDeclaration(
+    name="get_user_tickets",
+    description="Get tickets of the authenticated user. Can filter by ticket status or flight number.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "status": {
+                "type": "string",
+                "description": "Ticket status: pending, paid, used, cancelled.",
+            },
+            "flight_number": {
+                "type": "string",
+                "description": "Flight number, for example LH123.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of tickets to return.",
+            },
+        },
+        "required": [],
+    },
+)
+
+
+ticket_details_tool = types.FunctionDeclaration(
+    name="get_ticket_details",
+    description="Get details of a specific ticket of the authenticated user.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "ticket_id": {
+                "type": "integer",
+                "description": "Ticket ID.",
+            },
+        },
+        "required": ["ticket_id"],
+    },
+)
+
 
 ALL_TOOLS = [
     types.Tool(
@@ -126,12 +204,16 @@ ALL_TOOLS = [
             flight_details_tool,
             available_seats_tool,
             seat_details_tool,
+            user_bookings_tool,
+            booking_details_tool,
+            user_tickets_tool,
+            ticket_details_tool,
         ]
     )
 ]
 
 
-def execute_tool(name: str, args: dict):
+def execute_tool(name: str, args: dict, user_id=None):
     if name == "get_available_flights":
         return get_available_flights(
             departure_city=args.get("departure_city"),
@@ -159,6 +241,33 @@ def execute_tool(name: str, args: dict):
         return get_seat_details(
             flight_number=args.get("flight_number"),
             seat_number=args.get("seat_number"),
+        )
+    
+    if name == "get_user_bookings":
+        return get_user_bookings(
+            user_id=user_id,
+            status=args.get("status"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_booking_details":
+        return get_booking_details(
+            user_id=user_id,
+            booking_id=args.get("booking_id"),
+        )
+
+    if name == "get_user_tickets":
+        return get_user_tickets(
+            user_id=user_id,
+            status=args.get("status"),
+            flight_number=args.get("flight_number"),
+            limit=args.get("limit", 10),
+        )
+
+    if name == "get_ticket_details":
+        return get_ticket_details(
+            user_id=user_id,
+            ticket_id=args.get("ticket_id"),
         )
 
     raise ValueError(f"Unknown tool: {name}")
