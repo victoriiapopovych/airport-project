@@ -3,7 +3,7 @@ from google.genai import types
 from chat.models import Conversation, Message
 
 
-def get_or_create_conversation(user, conversation_id=None):
+def get_or_create_conversation(user, conversation_id=None, title=None):
     if conversation_id:
         conversation = Conversation.objects.filter(
             id=conversation_id,
@@ -16,12 +16,12 @@ def get_or_create_conversation(user, conversation_id=None):
 
     return Conversation.objects.create(
         user=user,
-        title="Airport AI Chat",
+        title=title or "New chat",
     )
 
 
 def prepare_chat_context(user, user_content: str, conversation_id=None):
-    conversation = get_or_create_conversation(user, conversation_id)
+    conversation = get_or_create_conversation(user, conversation_id, title=user_content[:60])
 
     Message.objects.create(
         conversation=conversation,
@@ -31,7 +31,7 @@ def prepare_chat_context(user, user_content: str, conversation_id=None):
 
     messages = list(
         conversation.messages
-        .order_by("-created_at")[:15]
+        .order_by("-created_at")[:10]
     )
 
     messages.reverse()

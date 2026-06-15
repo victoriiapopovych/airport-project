@@ -484,8 +484,9 @@
                     item.dataset.chatId = chat.id;
 
                     item.textContent =
-                        chat.last_message?.content?.slice(0, 40)
-                        || `Chat ${chat.id}`;
+                        chat.title?.length > 40
+                            ? chat.title.slice(0, 40) + "..."
+                            : chat.title || `Chat ${chat.id}`;
 
                     item.onclick = () => {
                         openConversation(chat.id);
