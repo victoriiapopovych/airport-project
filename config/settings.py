@@ -238,3 +238,15 @@ DEFAULT_FROM_EMAIL = os.getenv(
 ASGI_APPLICATION = "config.asgi.application"
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-2.5-flash-lite"
+)
+
+GEMINI_TEMPERATURE = float(
+    os.getenv(
+        "GEMINI_TEMPERATURE",
+        "0.3"
+    )
+)

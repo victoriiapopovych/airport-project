@@ -12,6 +12,8 @@ from .services.chat_services import prepare_chat_context, save_chat_response
 
 from .services.gemini import generate_response
 
+from .exceptions import GeminiServiceError
+
 logger = logging.getLogger(__name__)
 
 prepare_chat_context_async = database_sync_to_async(prepare_chat_context)
@@ -91,10 +93,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conversation_id,
         )
 
-        response_text = await database_sync_to_async(generate_response)(
-            contents,
-            self.user.id,
-        )
+        try:
+            response_text = await database_sync_to_async(generate_response)(
+                contents,
+                self.user.id,
+            )
+        except GeminiServiceError as e:
+            response_text = e.message
 
         await save_chat_response_async(
             conversation,
