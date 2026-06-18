@@ -250,3 +250,21 @@ GEMINI_TEMPERATURE = float(
         "0.3"
     )
 )
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+CHAT_CONTEXT_MESSAGES_LIMIT = int(
+    os.getenv("CHAT_CONTEXT_MESSAGES_LIMIT", "10")
+)
+
+CHAT_CONTEXT_CACHE_TIMEOUT = int(
+    os.getenv("CHAT_CONTEXT_CACHE_TIMEOUT", "86400")
+)

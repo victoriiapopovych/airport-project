@@ -11,6 +11,7 @@ from chat.prompts.prompt_loader import load_system_prompt
 
 from chat.exceptions import GeminiClientUnavailableError, GeminiRateLimitError, GeminiServerUnavailableError, GeminiServiceError
 
+
 logger = logging.getLogger(__name__)
 
 
