@@ -55,6 +55,9 @@ INSTALLED_APPS = [
     "notifications",
 
     "django_filters",
+
+    "channels",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -230,4 +233,38 @@ EMAIL_USE_SSL = False
 DEFAULT_FROM_EMAIL = os.getenv(
     "DEFAULT_FROM_EMAIL",
     "Airport Management System <noreply@airport.com>",
+)
+
+ASGI_APPLICATION = "config.asgi.application"
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+GEMINI_MODEL = os.getenv(
+    "GEMINI_MODEL",
+    "gemini-2.5-flash-lite"
+)
+
+GEMINI_TEMPERATURE = float(
+    os.getenv(
+        "GEMINI_TEMPERATURE",
+        "0.3"
+    )
+)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+CHAT_CONTEXT_MESSAGES_LIMIT = int(
+    os.getenv("CHAT_CONTEXT_MESSAGES_LIMIT", "10")
+)
+
+CHAT_CONTEXT_CACHE_TIMEOUT = int(
+    os.getenv("CHAT_CONTEXT_CACHE_TIMEOUT", "86400")
 )
